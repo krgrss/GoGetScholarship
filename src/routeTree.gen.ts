@@ -10,6 +10,15 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ScholarshipIdRouteImport } from './routes/scholarship/$id'
+import { Route as ApiRetrieveRouteImport } from './routes/api/retrieve'
+import { Route as ApiRerankRouteImport } from './routes/api/rerank'
+import { Route as ApiPersonalityRouteImport } from './routes/api/personality'
+import { Route as ApiIngestRouteImport } from './routes/api/ingest'
+import { Route as ApiDraftRouteImport } from './routes/api/draft'
+import { Route as ApiDbHealthRouteImport } from './routes/api/db-health'
+import { Route as ApiClaudeHealthRouteImport } from './routes/api/claude-health'
+import { Route as AdminDebugRouteImport } from './routes/admin/debug'
 import { Route as DemoStartServerFuncsRouteImport } from './routes/demo/start.server-funcs'
 import { Route as DemoStartApiRequestRouteImport } from './routes/demo/start.api-request'
 import { Route as DemoApiNamesRouteImport } from './routes/demo/api.names'
@@ -21,6 +30,51 @@ import { Route as DemoStartSsrDataOnlyRouteImport } from './routes/demo/start.ss
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ScholarshipIdRoute = ScholarshipIdRouteImport.update({
+  id: '/scholarship/$id',
+  path: '/scholarship/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRetrieveRoute = ApiRetrieveRouteImport.update({
+  id: '/api/retrieve',
+  path: '/api/retrieve',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiRerankRoute = ApiRerankRouteImport.update({
+  id: '/api/rerank',
+  path: '/api/rerank',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPersonalityRoute = ApiPersonalityRouteImport.update({
+  id: '/api/personality',
+  path: '/api/personality',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiIngestRoute = ApiIngestRouteImport.update({
+  id: '/api/ingest',
+  path: '/api/ingest',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDraftRoute = ApiDraftRouteImport.update({
+  id: '/api/draft',
+  path: '/api/draft',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDbHealthRoute = ApiDbHealthRouteImport.update({
+  id: '/api/db-health',
+  path: '/api/db-health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiClaudeHealthRoute = ApiClaudeHealthRouteImport.update({
+  id: '/api/claude-health',
+  path: '/api/claude-health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const AdminDebugRoute = AdminDebugRouteImport.update({
+  id: '/admin/debug',
+  path: '/admin/debug',
   getParentRoute: () => rootRouteImport,
 } as any)
 const DemoStartServerFuncsRoute = DemoStartServerFuncsRouteImport.update({
@@ -61,6 +115,15 @@ const DemoStartSsrDataOnlyRoute = DemoStartSsrDataOnlyRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/admin/debug': typeof AdminDebugRoute
+  '/api/claude-health': typeof ApiClaudeHealthRoute
+  '/api/db-health': typeof ApiDbHealthRoute
+  '/api/draft': typeof ApiDraftRoute
+  '/api/ingest': typeof ApiIngestRoute
+  '/api/personality': typeof ApiPersonalityRoute
+  '/api/rerank': typeof ApiRerankRoute
+  '/api/retrieve': typeof ApiRetrieveRoute
+  '/scholarship/$id': typeof ScholarshipIdRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
@@ -71,6 +134,15 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/admin/debug': typeof AdminDebugRoute
+  '/api/claude-health': typeof ApiClaudeHealthRoute
+  '/api/db-health': typeof ApiDbHealthRoute
+  '/api/draft': typeof ApiDraftRoute
+  '/api/ingest': typeof ApiIngestRoute
+  '/api/personality': typeof ApiPersonalityRoute
+  '/api/rerank': typeof ApiRerankRoute
+  '/api/retrieve': typeof ApiRetrieveRoute
+  '/scholarship/$id': typeof ScholarshipIdRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
@@ -82,6 +154,15 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/admin/debug': typeof AdminDebugRoute
+  '/api/claude-health': typeof ApiClaudeHealthRoute
+  '/api/db-health': typeof ApiDbHealthRoute
+  '/api/draft': typeof ApiDraftRoute
+  '/api/ingest': typeof ApiIngestRoute
+  '/api/personality': typeof ApiPersonalityRoute
+  '/api/rerank': typeof ApiRerankRoute
+  '/api/retrieve': typeof ApiRetrieveRoute
+  '/scholarship/$id': typeof ScholarshipIdRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
@@ -94,6 +175,15 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/admin/debug'
+    | '/api/claude-health'
+    | '/api/db-health'
+    | '/api/draft'
+    | '/api/ingest'
+    | '/api/personality'
+    | '/api/rerank'
+    | '/api/retrieve'
+    | '/scholarship/$id'
     | '/demo/api/names'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
@@ -104,6 +194,15 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/admin/debug'
+    | '/api/claude-health'
+    | '/api/db-health'
+    | '/api/draft'
+    | '/api/ingest'
+    | '/api/personality'
+    | '/api/rerank'
+    | '/api/retrieve'
+    | '/scholarship/$id'
     | '/demo/api/names'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
@@ -114,6 +213,15 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/admin/debug'
+    | '/api/claude-health'
+    | '/api/db-health'
+    | '/api/draft'
+    | '/api/ingest'
+    | '/api/personality'
+    | '/api/rerank'
+    | '/api/retrieve'
+    | '/scholarship/$id'
     | '/demo/api/names'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
@@ -125,6 +233,15 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  AdminDebugRoute: typeof AdminDebugRoute
+  ApiClaudeHealthRoute: typeof ApiClaudeHealthRoute
+  ApiDbHealthRoute: typeof ApiDbHealthRoute
+  ApiDraftRoute: typeof ApiDraftRoute
+  ApiIngestRoute: typeof ApiIngestRoute
+  ApiPersonalityRoute: typeof ApiPersonalityRoute
+  ApiRerankRoute: typeof ApiRerankRoute
+  ApiRetrieveRoute: typeof ApiRetrieveRoute
+  ScholarshipIdRoute: typeof ScholarshipIdRoute
   DemoApiNamesRoute: typeof DemoApiNamesRoute
   DemoStartApiRequestRoute: typeof DemoStartApiRequestRoute
   DemoStartServerFuncsRoute: typeof DemoStartServerFuncsRoute
@@ -141,6 +258,69 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/scholarship/$id': {
+      id: '/scholarship/$id'
+      path: '/scholarship/$id'
+      fullPath: '/scholarship/$id'
+      preLoaderRoute: typeof ScholarshipIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/retrieve': {
+      id: '/api/retrieve'
+      path: '/api/retrieve'
+      fullPath: '/api/retrieve'
+      preLoaderRoute: typeof ApiRetrieveRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/rerank': {
+      id: '/api/rerank'
+      path: '/api/rerank'
+      fullPath: '/api/rerank'
+      preLoaderRoute: typeof ApiRerankRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/personality': {
+      id: '/api/personality'
+      path: '/api/personality'
+      fullPath: '/api/personality'
+      preLoaderRoute: typeof ApiPersonalityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/ingest': {
+      id: '/api/ingest'
+      path: '/api/ingest'
+      fullPath: '/api/ingest'
+      preLoaderRoute: typeof ApiIngestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/draft': {
+      id: '/api/draft'
+      path: '/api/draft'
+      fullPath: '/api/draft'
+      preLoaderRoute: typeof ApiDraftRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/db-health': {
+      id: '/api/db-health'
+      path: '/api/db-health'
+      fullPath: '/api/db-health'
+      preLoaderRoute: typeof ApiDbHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/claude-health': {
+      id: '/api/claude-health'
+      path: '/api/claude-health'
+      fullPath: '/api/claude-health'
+      preLoaderRoute: typeof ApiClaudeHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/admin/debug': {
+      id: '/admin/debug'
+      path: '/admin/debug'
+      fullPath: '/admin/debug'
+      preLoaderRoute: typeof AdminDebugRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/demo/start/server-funcs': {
@@ -197,6 +377,15 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  AdminDebugRoute: AdminDebugRoute,
+  ApiClaudeHealthRoute: ApiClaudeHealthRoute,
+  ApiDbHealthRoute: ApiDbHealthRoute,
+  ApiDraftRoute: ApiDraftRoute,
+  ApiIngestRoute: ApiIngestRoute,
+  ApiPersonalityRoute: ApiPersonalityRoute,
+  ApiRerankRoute: ApiRerankRoute,
+  ApiRetrieveRoute: ApiRetrieveRoute,
+  ScholarshipIdRoute: ScholarshipIdRoute,
   DemoApiNamesRoute: DemoApiNamesRoute,
   DemoStartApiRequestRoute: DemoStartApiRequestRoute,
   DemoStartServerFuncsRoute: DemoStartServerFuncsRoute,
