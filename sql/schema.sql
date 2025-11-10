@@ -45,6 +45,17 @@ CREATE TABLE scholarship_profiles (
   updated_at timestamptz DEFAULT now()
 );
 
+-- Essay drafts
+CREATE TABLE drafts (
+  id              uuid PRIMARY KEY,
+  student_id      uuid REFERENCES students(id),
+  scholarship_id  uuid REFERENCES scholarships(id),
+  kind            text,      -- "generic" | "tailored"
+  content         text,
+  explanation     text,      -- why we wrote it this way
+  created_at      timestamptz DEFAULT now()
+);
+
 -- HNSW index (cosine distance). Use L2 ops if you prefer Euclidean.
 CREATE INDEX scholarship_embeddings_hnsw_cos
   ON scholarship_embeddings
