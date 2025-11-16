@@ -9,6 +9,69 @@ pnpm install
 pnpm start
 ```
 
+## API Quick Start
+
+Set environment variables in `.env` (see `.env.example`) and run the dev server.
+
+If `ADMIN_API_KEY` is set, include one of these headers for admin routes:
+
+- `x-admin-key: $ADMIN_API_KEY`
+- `x-api-key: $ADMIN_API_KEY`
+- `Authorization: Bearer $ADMIN_API_KEY`
+
+Examples (PowerShell):
+
+```powershell
+# Retrieve or match (public)
+irm -Method Post http://localhost:3000/api/match -ContentType 'application/json' -Body '{
+  "student_summary": "CS student, 3.8 GPA, robotics projects, volunteer tutor",
+  "min_gpa": 3.2,
+  "k": 20
+}'
+
+# Ingest scholarships (admin)
+$admin = 'change-me'
+irm -Method Post http://localhost:3000/api/ingest -ContentType 'application/json' -Headers @{ 'x-admin-key'=$admin } -Body '{
+  "scholarships": [
+    {
+      "name": "STEM Innovators Award",
+      "sponsor": "Acme Foundation",
+      "url": "https://example.com",
+      "raw_text": "Full description...",
+      "min_gpa": 3.5,
+      "country": "US",
+      "fields": ["STEM", "engineering"]
+    }
+  ]
+}'
+
+# Personality profile (admin; optional persistence)
+irm -Method Post http://localhost:3000/api/personality -ContentType 'application/json' -Headers @{ 'x-admin-key'=$admin } -Body '{
+  "scholarship_id": "00000000-0000-0000-0000-000000000000",
+  "scholarship_name": "STEM Innovators Award",
+  "raw_text": "Full description text...",
+  "winner_texts": ["Snippet of past winner essay..."]
+}'
+
+# Essay draft (admin; optional persistence)
+irm -Method Post http://localhost:3000/api/draft -ContentType 'application/json' -Headers @{ 'x-admin-key'=$admin } -Body '{
+  "scholarship_id": "00000000-0000-0000-0000-000000000000",
+  "student_id": "11111111-1111-1111-1111-111111111111",
+  "scholarship_name": "STEM Innovators Award",
+  "scholarship_text": "(optional) text...",
+  "personality": { "weights": { "gpa":0.2, "projects":0.4, "leadership":0.2, "community":0.2, "need":0 }, "themes": ["innovation"], "tone": "formal and technical" },
+  "student_profile": { "name": "Alice", "gpa": 3.8, "major": "CS", "stories": ["Designed low-cost air sensors for city council demo..."] },
+  "word_target": 400
+}'
+```
+
+Notes:
+
+- `/api/retrieve` behaves like `/api/match`.
+- Admin routes may respond 401 if the key is missing.
+- Payloads are capped in size by the API to prevent abuse.
+- Default rate limits (per client): match/retrieve 30/min, personality 10/min, draft 10/min, ingest 5/min.
+
 # Building For Production
 
 To build this application for production:

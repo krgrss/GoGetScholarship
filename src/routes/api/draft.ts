@@ -1,7 +1,35 @@
+/**
+ * POST /api/draft
+ * Purpose: Generate an authentic, scholarship-tailored essay draft using Claude.
+ * Auth: Requires ADMIN_API_KEY. Rate limited to 10/min.
+ *
+ * Payload (zod-validated):
+ * {
+ *   scholarship_id?: uuid (if provided with student_id, the draft is persisted),
+ *   student_id?: uuid,
+ *   scholarship_name: string,
+ *   scholarship_text?: string (<= 60k chars),
+ *   personality: { weights, themes, tone, constraints?, notes? },
+ *   student_profile: { name?, gpa?, major?, country?, activities[], awards[], projects[], background[], stories[] },
+ *   word_target?: number (150..800),
+ *   style?: string (override tone)
+ * }
+ *
+ * Response: { ok: true, draft, explanation, outline?, safety }
+ */
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { askClaude } from '@/server/llm/anthropic'
+import { coerceMinifiedJson, extractAnthropicText } from '@/server/llm/json'
+import { pool } from '@/server/db'
+import { randomUUID } from 'crypto'
+import { checkAdminKey } from '@/server/auth'
+import { ENV } from '@/server/env'
+import { rateLimit } from '@/server/rateLimit'
 
+/**
+ * Zod schema: Scholarship personality used for drafting
+ */
 const Personality = z.object({
   weights: z.record(z.string(), z.number()),
   themes: z.array(z.string()),
@@ -10,25 +38,33 @@ const Personality = z.object({
   notes: z.array(z.string()).optional().default([]),
 })
 
+/**
+ * Zod schema: Draft request payload
+ */
 const DraftIn = z.object({
   scholarship_name: z.string(),
-  scholarship_text: z.string().optional().default(''),
+  scholarship_text: z.string().max(60_000).optional().default(''),
   personality: Personality, // output from /api/personality
+  scholarship_id: z.string().uuid().optional(),
+  student_id: z.string().uuid().optional(),
   student_profile: z.object({
-    name: z.string().optional(),
+    name: z.string().max(200).optional(),
     gpa: z.number().optional(),
-    major: z.string().optional(),
-    country: z.string().optional(),
-    activities: z.array(z.string()).optional().default([]),
-    awards: z.array(z.string()).optional().default([]),
-    projects: z.array(z.string()).optional().default([]),
-    background: z.array(z.string()).optional().default([]), // e.g., first-gen, immigrant, etc.
-    stories: z.array(z.string()).optional().default([]),
+    major: z.string().max(200).optional(),
+    country: z.string().max(100).optional(),
+    activities: z.array(z.string().max(1_000)).max(50).optional().default([]),
+    awards: z.array(z.string().max(1_000)).max(50).optional().default([]),
+    projects: z.array(z.string().max(2_000)).max(50).optional().default([]),
+    background: z.array(z.string().max(200)).max(20).optional().default([]), // e.g., first-gen, immigrant, etc.
+    stories: z.array(z.string().max(2_000)).max(50).optional().default([]),
   }),
   word_target: z.number().int().min(150).max(800).optional().default(350),
   style: z.string().optional(), // override tone if you want
 })
 
+/**
+ * Zod schema: Draft response payload
+ */
 const DraftOut = z.object({
   draft: z.string(),
   explanation: z.string(),
@@ -39,22 +75,20 @@ const DraftOut = z.object({
   }),
 })
 
-function extractText(res: any): string {
-  const t = (res?.content?.[0] as any)?.text
-  return typeof t === 'string' ? t : JSON.stringify(res?.content ?? {})
-}
-
-function coerceJson(s: string) {
-  const start = s.indexOf('{')
-  const end = s.lastIndexOf('}')
-  if (start >= 0 && end > start) s = s.slice(start, end + 1)
-  return JSON.parse(s)
-}
+// centralized helpers
 
 export const Route = createFileRoute('/api/draft')({
   server: {
     handlers: {
       POST: async ({ request }) => {
+        // Admin guard: require key if configured
+        const auth = checkAdminKey(request, ENV.ADMIN_API_KEY)
+        if (!auth.ok) return auth.res
+
+        // Rate limit: 10/min per client for drafting
+        const rl = rateLimit(request, 'api:draft', { windowMs: 60_000, max: 10 })
+        if (!rl.ok) return rl.res
+
         const input = DraftIn.parse(await request.json())
 
         const system =
@@ -106,7 +140,17 @@ Rules:
         })
 
         try {
-          const json = DraftOut.parse(coerceJson(extractText(res)))
+          const json = DraftOut.parse(coerceMinifiedJson(extractAnthropicText(res)))
+
+          // Optional persistence if both IDs provided
+          if (input.scholarship_id && input.student_id) {
+            await pool.query(
+              `insert into drafts (id, student_id, scholarship_id, kind, content, explanation)
+               values ($1::uuid, $2::uuid, $3::uuid, $4::text, $5::text, $6::text)`,
+              [randomUUID(), input.student_id, input.scholarship_id, 'tailored', json.draft, json.explanation],
+            )
+          }
+
           return new Response(JSON.stringify({ ok: true, ...json }), {
             headers: { 'Content-Type': 'application/json' },
           })

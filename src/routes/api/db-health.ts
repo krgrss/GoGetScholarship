@@ -1,3 +1,8 @@
+/**
+ * GET /api/db-health
+ * Purpose: Sanity check for Postgres connectivity.
+ * Response: { ok: boolean }
+ */
 import { createFileRoute } from '@tanstack/react-router'
 import { dbHealth } from '../../server/db'
 

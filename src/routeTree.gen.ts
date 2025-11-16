@@ -9,11 +9,13 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ScholarshipIdRouteImport } from './routes/scholarship/$id'
 import { Route as ApiRetrieveRouteImport } from './routes/api/retrieve'
 import { Route as ApiRerankRouteImport } from './routes/api/rerank'
 import { Route as ApiPersonalityRouteImport } from './routes/api/personality'
+import { Route as ApiMatchRouteImport } from './routes/api/match'
 import { Route as ApiIngestRouteImport } from './routes/api/ingest'
 import { Route as ApiDraftRouteImport } from './routes/api/draft'
 import { Route as ApiDbHealthRouteImport } from './routes/api/db-health'
@@ -27,6 +29,11 @@ import { Route as DemoStartSsrSpaModeRouteImport } from './routes/demo/start.ssr
 import { Route as DemoStartSsrFullSsrRouteImport } from './routes/demo/start.ssr.full-ssr'
 import { Route as DemoStartSsrDataOnlyRouteImport } from './routes/demo/start.ssr.data-only'
 
+const ProfileRoute = ProfileRouteImport.update({
+  id: '/profile',
+  path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -50,6 +57,11 @@ const ApiRerankRoute = ApiRerankRouteImport.update({
 const ApiPersonalityRoute = ApiPersonalityRouteImport.update({
   id: '/api/personality',
   path: '/api/personality',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiMatchRoute = ApiMatchRouteImport.update({
+  id: '/api/match',
+  path: '/api/match',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiIngestRoute = ApiIngestRouteImport.update({
@@ -115,11 +127,13 @@ const DemoStartSsrDataOnlyRoute = DemoStartSsrDataOnlyRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/profile': typeof ProfileRoute
   '/admin/debug': typeof AdminDebugRoute
   '/api/claude-health': typeof ApiClaudeHealthRoute
   '/api/db-health': typeof ApiDbHealthRoute
   '/api/draft': typeof ApiDraftRoute
   '/api/ingest': typeof ApiIngestRoute
+  '/api/match': typeof ApiMatchRoute
   '/api/personality': typeof ApiPersonalityRoute
   '/api/rerank': typeof ApiRerankRoute
   '/api/retrieve': typeof ApiRetrieveRoute
@@ -134,11 +148,13 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/profile': typeof ProfileRoute
   '/admin/debug': typeof AdminDebugRoute
   '/api/claude-health': typeof ApiClaudeHealthRoute
   '/api/db-health': typeof ApiDbHealthRoute
   '/api/draft': typeof ApiDraftRoute
   '/api/ingest': typeof ApiIngestRoute
+  '/api/match': typeof ApiMatchRoute
   '/api/personality': typeof ApiPersonalityRoute
   '/api/rerank': typeof ApiRerankRoute
   '/api/retrieve': typeof ApiRetrieveRoute
@@ -154,11 +170,13 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/profile': typeof ProfileRoute
   '/admin/debug': typeof AdminDebugRoute
   '/api/claude-health': typeof ApiClaudeHealthRoute
   '/api/db-health': typeof ApiDbHealthRoute
   '/api/draft': typeof ApiDraftRoute
   '/api/ingest': typeof ApiIngestRoute
+  '/api/match': typeof ApiMatchRoute
   '/api/personality': typeof ApiPersonalityRoute
   '/api/rerank': typeof ApiRerankRoute
   '/api/retrieve': typeof ApiRetrieveRoute
@@ -175,11 +193,13 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/profile'
     | '/admin/debug'
     | '/api/claude-health'
     | '/api/db-health'
     | '/api/draft'
     | '/api/ingest'
+    | '/api/match'
     | '/api/personality'
     | '/api/rerank'
     | '/api/retrieve'
@@ -194,11 +214,13 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/profile'
     | '/admin/debug'
     | '/api/claude-health'
     | '/api/db-health'
     | '/api/draft'
     | '/api/ingest'
+    | '/api/match'
     | '/api/personality'
     | '/api/rerank'
     | '/api/retrieve'
@@ -213,11 +235,13 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/profile'
     | '/admin/debug'
     | '/api/claude-health'
     | '/api/db-health'
     | '/api/draft'
     | '/api/ingest'
+    | '/api/match'
     | '/api/personality'
     | '/api/rerank'
     | '/api/retrieve'
@@ -233,11 +257,13 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ProfileRoute: typeof ProfileRoute
   AdminDebugRoute: typeof AdminDebugRoute
   ApiClaudeHealthRoute: typeof ApiClaudeHealthRoute
   ApiDbHealthRoute: typeof ApiDbHealthRoute
   ApiDraftRoute: typeof ApiDraftRoute
   ApiIngestRoute: typeof ApiIngestRoute
+  ApiMatchRoute: typeof ApiMatchRoute
   ApiPersonalityRoute: typeof ApiPersonalityRoute
   ApiRerankRoute: typeof ApiRerankRoute
   ApiRetrieveRoute: typeof ApiRetrieveRoute
@@ -253,6 +279,13 @@ export interface RootRouteChildren {
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/profile': {
+      id: '/profile'
+      path: '/profile'
+      fullPath: '/profile'
+      preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -286,6 +319,13 @@ declare module '@tanstack/react-router' {
       path: '/api/personality'
       fullPath: '/api/personality'
       preLoaderRoute: typeof ApiPersonalityRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/match': {
+      id: '/api/match'
+      path: '/api/match'
+      fullPath: '/api/match'
+      preLoaderRoute: typeof ApiMatchRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/ingest': {
@@ -377,11 +417,13 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ProfileRoute: ProfileRoute,
   AdminDebugRoute: AdminDebugRoute,
   ApiClaudeHealthRoute: ApiClaudeHealthRoute,
   ApiDbHealthRoute: ApiDbHealthRoute,
   ApiDraftRoute: ApiDraftRoute,
   ApiIngestRoute: ApiIngestRoute,
+  ApiMatchRoute: ApiMatchRoute,
   ApiPersonalityRoute: ApiPersonalityRoute,
   ApiRerankRoute: ApiRerankRoute,
   ApiRetrieveRoute: ApiRetrieveRoute,

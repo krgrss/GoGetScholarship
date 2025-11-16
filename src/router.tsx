@@ -13,3 +13,8 @@ export const getRouter = () => {
 
   return router
 }
+/**
+ * Router factory
+ * - Creates a TanStack Router instance using the generated route tree.
+ * - Exposed as a function to allow fresh instances in SSR contexts if needed.
+ */

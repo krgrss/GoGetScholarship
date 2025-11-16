@@ -56,3 +56,8 @@ function RootDocument({ children }: { children: React.ReactNode }) {
     </html>
   )
 }
+/**
+ * Root route / document shell
+ * - Provides <html> scaffold, head/meta, global styles, header, scripts, devtools.
+ * - Child routes render inside the body via the "shellComponent".
+ */

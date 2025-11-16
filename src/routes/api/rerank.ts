@@ -1,7 +1,21 @@
+/**
+ * POST /api/rerank
+ * Purpose: Setwise/listwise LLM reranking of candidate scholarships for a student.
+ * Auth: Public. Consider adding a rate limit if exposed broadly.
+ *
+ * Input schema (RerankIn):
+ *   { student_summary: string, candidates: [{ id, name, snippet?, min_gpa?, country?, fields?, weights_hint? }], top_k? }
+ * Output schema (RerankOut):
+ *   { ranking: [{ id, score (0..100), rationale }] }
+ */
 import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { askClaude } from '@/server/llm/anthropic'
+import { coerceMinifiedJson, extractAnthropicText } from '@/server/llm/json'
 
+/**
+ * Zod schema: Candidate scholarship summary for reranking
+ */
 const Candidate = z.object({
   id: z.string(),
   name: z.string(),
@@ -12,12 +26,18 @@ const Candidate = z.object({
   weights_hint: z.record(z.string(), z.number()).optional().default({}),
 })
 
+/**
+ * Zod schema: Rerank request payload
+ */
 const RerankIn = z.object({
   student_summary: z.string(),
   candidates: z.array(Candidate).min(1),
   top_k: z.number().int().min(1).max(50).optional().default(20),
 })
 
+/**
+ * Zod schema: Rerank response payload
+ */
 const RerankOut = z.object({
   ranking: z
     .array(
@@ -30,17 +50,7 @@ const RerankOut = z.object({
     .min(1),
 })
 
-function extractText(res: any): string {
-  const t = (res?.content?.[0] as any)?.text
-  return typeof t === 'string' ? t : JSON.stringify(res?.content ?? {})
-}
-
-function coerceJson(s: string) {
-  const start = s.indexOf('{')
-  const end = s.lastIndexOf('}')
-  if (start >= 0 && end > start) s = s.slice(start, end + 1)
-  return JSON.parse(s)
-}
+// centralized helpers
 
 export const Route = createFileRoute('/api/rerank')({
   server: {
@@ -79,7 +89,7 @@ Constraints:
         })
 
         try {
-          const json = RerankOut.parse(coerceJson(extractText(res)))
+          const json = RerankOut.parse(coerceMinifiedJson(extractAnthropicText(res)))
           // Optionally slice to top_k (but keep original order from model)
           const top = json.ranking
             .slice(0, input.top_k)

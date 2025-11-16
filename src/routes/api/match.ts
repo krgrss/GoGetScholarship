@@ -1,6 +1,6 @@
 /**
- * POST /api/retrieve
- * Purpose: Embed a student summary and return top‑K scholarships by dot-product similarity.
+ * POST /api/match
+ * Purpose: Alias of /api/retrieve for naming consistency with docs.
  * Auth: Public, but rate limited to 30/min.
  *
  * Payload: { student_summary: string, min_gpa?: number, k?: number }
@@ -12,23 +12,23 @@ import { topKByEmbedding } from '../../server/db'
 import { rateLimit } from '../../server/rateLimit'
 
 /**
- * Request body for /api/retrieve
+ * Request body for /api/match (alias of /api/retrieve)
  */
-type RetrieveBody = {
-  student_summary: string // short normalized summary produced by LLM or form
+type MatchBody = {
+  student_summary: string
   min_gpa?: number
   k?: number
 }
 
-export const Route = createFileRoute('/api/retrieve')({
+export const Route = createFileRoute('/api/match')({
   server: {
     handlers: {
       POST: async ({ request }) => {
         // Basic rate limit: 30 requests per minute per client
-        const rl = rateLimit(request, 'api:retrieve', { windowMs: 60_000, max: 30 })
+        const rl = rateLimit(request, 'api:match', { windowMs: 60_000, max: 30 })
         if (!rl.ok) return rl.res
 
-        const body = (await request.json()) as RetrieveBody
+        const body = (await request.json()) as MatchBody
         const [emb] = await embedWithVoyage([body.student_summary])
         const k = Math.max(1, Math.min(50, body.k ?? 20))
         const rows = await topKByEmbedding(emb, k, body.min_gpa ?? null)

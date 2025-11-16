@@ -1,3 +1,10 @@
+-- Schema: GoGetScholarship
+-- Purpose: Core relational + vector tables used for scholarship ingestion,
+-- retrieval (pgvector), personality profiles, and essay drafts.
+-- Notes:
+-- - Embedding dimension defaults to 1024 (Voyage 3.5). Keep in sync with ENV.EMBED_DIM.
+-- - Use `vector_cosine_ops` for cosine distance `<=>` and HNSW index.
+
 -- Enable pgvector once
 CREATE EXTENSION IF NOT EXISTS vector;
 
@@ -14,6 +21,17 @@ CREATE TABLE scholarships (
   metadata jsonb DEFAULT '{}'::jsonb
 );
 
+COMMENT ON TABLE scholarships IS 'Scholarship metadata and raw description text';
+COMMENT ON COLUMN scholarships.id IS 'Primary key (UUID)';
+COMMENT ON COLUMN scholarships.name IS 'Display name of the scholarship';
+COMMENT ON COLUMN scholarships.sponsor IS 'Sponsoring organization';
+COMMENT ON COLUMN scholarships.url IS 'Public URL for scholarship details';
+COMMENT ON COLUMN scholarships.raw_text IS 'Full textual description used for embeddings & profiling';
+COMMENT ON COLUMN scholarships.min_gpa IS 'Minimum GPA if specified (NULL = no minimum)';
+COMMENT ON COLUMN scholarships.country IS 'Country eligibility if applicable';
+COMMENT ON COLUMN scholarships.fields IS 'Relevant fields/areas of study';
+COMMENT ON COLUMN scholarships.metadata IS 'Additional JSON metadata';
+
 -- Students
 CREATE TABLE students (
   id uuid PRIMARY KEY,
@@ -24,6 +42,15 @@ CREATE TABLE students (
   country text,
   metadata jsonb DEFAULT '{}'::jsonb
 );
+
+COMMENT ON TABLE students IS 'Student profiles used for matching/drafting';
+COMMENT ON COLUMN students.id IS 'Primary key (UUID)';
+COMMENT ON COLUMN students.name IS 'Student name';
+COMMENT ON COLUMN students.email IS 'Student email (optional)';
+COMMENT ON COLUMN students.gpa IS 'Student GPA';
+COMMENT ON COLUMN students.major IS 'Major/field';
+COMMENT ON COLUMN students.country IS 'Country of study/residence';
+COMMENT ON COLUMN students.metadata IS 'Additional JSON metadata';
 
 -- Embeddings (Voyage: choose a single dimension, e.g., 1024)
 CREATE TABLE scholarship_embeddings (
@@ -36,6 +63,14 @@ CREATE TABLE student_embeddings (
   embedding vector(1024) NOT NULL
 );
 
+COMMENT ON TABLE scholarship_embeddings IS 'pgvector embeddings for scholarships (dimension=1024)';
+COMMENT ON COLUMN scholarship_embeddings.scholarship_id IS 'FK to scholarships.id';
+COMMENT ON COLUMN scholarship_embeddings.embedding IS 'Vector embedding (cosine distance)';
+
+COMMENT ON TABLE student_embeddings IS 'pgvector embeddings for students (optional cache)';
+COMMENT ON COLUMN student_embeddings.student_id IS 'FK to students.id';
+COMMENT ON COLUMN student_embeddings.embedding IS 'Vector embedding (cosine distance)';
+
 -- Claude-inferred “personality” profile per scholarship
 CREATE TABLE scholarship_profiles (
   scholarship_id uuid PRIMARY KEY REFERENCES scholarships(id) ON DELETE CASCADE,
@@ -44,6 +79,13 @@ CREATE TABLE scholarship_profiles (
   tone text NOT NULL,              -- e.g. "formal technical"
   updated_at timestamptz DEFAULT now()
 );
+
+COMMENT ON TABLE scholarship_profiles IS 'Claude-inferred personality profile for a scholarship';
+COMMENT ON COLUMN scholarship_profiles.scholarship_id IS 'FK to scholarships.id';
+COMMENT ON COLUMN scholarship_profiles.weights IS 'JSON weights over factors (must sum ≈ 1)';
+COMMENT ON COLUMN scholarship_profiles.themes IS 'Key themes extracted from description';
+COMMENT ON COLUMN scholarship_profiles.tone IS 'Preferred writing tone/style';
+COMMENT ON COLUMN scholarship_profiles.updated_at IS 'Last update timestamp';
 
 -- Essay drafts
 CREATE TABLE drafts (
@@ -56,8 +98,17 @@ CREATE TABLE drafts (
   created_at      timestamptz DEFAULT now()
 );
 
--- HNSW index (cosine distance). Use L2 ops if you prefer Euclidean.
-CREATE INDEX scholarship_embeddings_hnsw_cos
+COMMENT ON TABLE drafts IS 'Stored essay drafts for students';
+COMMENT ON COLUMN drafts.id IS 'Primary key (UUID)';
+COMMENT ON COLUMN drafts.student_id IS 'FK to students.id';
+COMMENT ON COLUMN drafts.scholarship_id IS 'FK to scholarships.id';
+COMMENT ON COLUMN drafts.kind IS 'Draft kind: generic | tailored';
+COMMENT ON COLUMN drafts.content IS 'Essay content';
+COMMENT ON COLUMN drafts.explanation IS 'Model explanation/rationale for structure';
+COMMENT ON COLUMN drafts.created_at IS 'Creation timestamp';
+
+-- HNSW index (negative inner product / dot product). Use L2 ops if you prefer Euclidean.
+CREATE INDEX scholarship_embeddings_hnsw_ip
   ON scholarship_embeddings
-  USING hnsw (embedding vector_cosine_ops)
+  USING hnsw (embedding vector_ip_ops)
   WITH (m = 16, ef_construction = 200);

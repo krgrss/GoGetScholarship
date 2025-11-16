@@ -12,3 +12,8 @@ function DebugPage() {
     </div>
   )
 }
+/**
+ * Admin Debug page
+ * - Placeholder to visualize pipeline traces, weights, and outputs.
+ * - Extend to show latest personality profiles and drafts.
+ */

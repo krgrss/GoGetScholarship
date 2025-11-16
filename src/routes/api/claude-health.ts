@@ -1,3 +1,8 @@
+/**
+ * GET /api/claude-health
+ * Purpose: Sanity check that Claude API keys/config are working.
+ * Response: { ok: true, text }
+ */
 import { createFileRoute } from '@tanstack/react-router'
 import { askClaude } from '../../server/llm/anthropic'
 

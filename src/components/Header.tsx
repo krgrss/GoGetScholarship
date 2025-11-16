@@ -175,3 +175,8 @@ export default function Header() {
     </>
   )
 }
+/**
+ * App Header
+ * - Simple navigation header rendered by the root shell
+ * - Extend with links to key routes like /profile and /admin/debug
+ */
