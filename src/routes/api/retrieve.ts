@@ -7,9 +7,8 @@
  * Response: { ok: true, rows: [{ id, name, url, min_gpa, distance, dot_sim }] }
  */
 import { createFileRoute } from '@tanstack/react-router'
-import { embedWithVoyage } from '../../server/embeddings/voyage'
-import { topKByEmbedding } from '../../server/db'
 import { rateLimit } from '../../server/rateLimit'
+import { runMatchWorkflow } from '../../server/match'
 
 /**
  * Request body for /api/retrieve
@@ -29,10 +28,16 @@ export const Route = createFileRoute('/api/retrieve')({
         if (!rl.ok) return rl.res
 
         const body = (await request.json()) as RetrieveBody
-        const [emb] = await embedWithVoyage([body.student_summary])
-        const k = Math.max(1, Math.min(50, body.k ?? 20))
-        const rows = await topKByEmbedding(emb, k, body.min_gpa ?? null)
-        return new Response(JSON.stringify({ ok: true, rows }), {
+        const res = await runMatchWorkflow({
+          studentSummary: body.student_summary,
+          minGpa: body.min_gpa,
+          k: body.k,
+          useReranker: false,
+        })
+
+        const status = res.ok ? 200 : 400
+        return new Response(JSON.stringify(res), {
+          status,
           headers: { 'Content-Type': 'application/json' },
         })
       },

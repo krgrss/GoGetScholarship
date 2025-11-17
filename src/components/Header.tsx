@@ -1,7 +1,8 @@
 import { Link } from '@tanstack/react-router'
 
-import { useState } from 'react'
+import * as React from 'react'
 import {
+  Activity,
   ChevronDown,
   ChevronRight,
   Home,
@@ -9,167 +10,128 @@ import {
   Network,
   SquareFunction,
   StickyNote,
+  SunMedium,
+  MoonStar,
   X,
 } from 'lucide-react'
 
 export default function Header() {
-  const [isOpen, setIsOpen] = useState(false)
-  const [groupedExpanded, setGroupedExpanded] = useState<
+  const [isOpen, setIsOpen] = React.useState(false)
+  const [groupedExpanded, setGroupedExpanded] = React.useState<
     Record<string, boolean>
   >({})
+  const [isDark, setIsDark] = React.useState<boolean>(() => {
+    if (typeof window === 'undefined') return false
+    return document.documentElement.classList.contains('dark')
+  })
+
+  React.useEffect(() => {
+    if (typeof document === 'undefined') return
+    if (isDark) {
+      document.documentElement.classList.add('dark')
+    } else {
+      document.documentElement.classList.remove('dark')
+    }
+  }, [isDark])
+
+  function toggleTheme() {
+    setIsDark((prev) => !prev)
+  }
 
   return (
     <>
-      <header className="p-4 flex items-center bg-gray-800 text-white shadow-lg">
-        <button
-          onClick={() => setIsOpen(true)}
-          className="p-2 hover:bg-gray-700 rounded-lg transition-colors"
-          aria-label="Open menu"
-        >
-          <Menu size={24} />
-        </button>
-        <h1 className="ml-4 text-xl font-semibold">
-          <Link to="/">
-            <img
-              src="/tanstack-word-logo-white.svg"
-              alt="TanStack Logo"
-              className="h-10"
-            />
-          </Link>
-        </h1>
+      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
+        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+          <div className="flex items-center gap-3">
+            <button
+              onClick={() => setIsOpen(true)}
+              className="inline-flex items-center justify-center rounded-full border border-border bg-background p-2 text-muted-foreground shadow-sm transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+              aria-label="Open menu"
+            >
+              <Menu size={18} />
+            </button>
+            <Link to="/" className="flex items-baseline gap-2">
+              <span className="font-display text-lg tracking-tight">
+                GoGetScholarship
+              </span>
+              <span className="hidden text-[11px] font-medium uppercase text-muted-foreground sm:inline">
+                Studio
+              </span>
+            </Link>
+          </div>
+
+          <div className="flex items-center gap-3">
+            <Link
+              to="/admin/debug"
+              className="hidden items-center gap-1 text-xs font-medium text-muted-foreground transition hover:text-foreground sm:inline-flex"
+            >
+              <Activity className="h-3.5 w-3.5" />
+              <span>Lab</span>
+            </Link>
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              {isDark ? (
+                <SunMedium className="h-3.5 w-3.5" />
+              ) : (
+                <MoonStar className="h-3.5 w-3.5" />
+              )}
+              <span className="hidden sm:inline">
+                {isDark ? 'Light mode' : 'Dark mode'}
+              </span>
+            </button>
+          </div>
+        </div>
       </header>
 
       <aside
-        className={`fixed top-0 left-0 h-full w-80 bg-gray-900 text-white shadow-2xl z-50 transform transition-transform duration-300 ease-in-out flex flex-col ${
+        className={`fixed top-0 left-0 z-50 flex h-full w-80 flex-col bg-card text-foreground shadow-2xl ring-1 ring-border transform transition-transform duration-300 ease-in-out ${
           isOpen ? 'translate-x-0' : '-translate-x-full'
         }`}
       >
-        <div className="flex items-center justify-between p-4 border-b border-gray-700">
-          <h2 className="text-xl font-bold">Navigation</h2>
+        <div className="flex items-center justify-between border-b border-border p-4">
+          <h2 className="text-sm font-semibold text-muted-foreground">
+            Navigation
+          </h2>
           <button
             onClick={() => setIsOpen(false)}
-            className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
+            className="rounded-full p-2 text-muted-foreground transition hover:bg-muted"
             aria-label="Close menu"
           >
             <X size={24} />
           </button>
         </div>
 
-        <nav className="flex-1 p-4 overflow-y-auto">
+        <nav className="flex-1 overflow-y-auto p-4">
           <Link
             to="/"
             onClick={() => setIsOpen(false)}
-            className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
+            className="mb-2 flex items-center gap-3 rounded-lg p-3 text-sm text-muted-foreground transition hover:bg-muted"
             activeProps={{
               className:
-                'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
+                'mb-2 flex items-center gap-3 rounded-lg bg-primary text-primary-foreground p-3 text-sm transition hover:bg-primary/90',
             }}
           >
             <Home size={20} />
-            <span className="font-medium">Home</span>
-          </Link>
-
-          {/* Demo Links Start */}
-
-          <Link
-            to="/demo/start/server-funcs"
-            onClick={() => setIsOpen(false)}
-            className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
-            activeProps={{
-              className:
-                'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
-            }}
-          >
-            <SquareFunction size={20} />
-            <span className="font-medium">Start - Server Functions</span>
+            <span className="font-medium">Dashboard</span>
           </Link>
 
           <Link
-            to="/demo/start/api-request"
+            to="/admin/debug"
             onClick={() => setIsOpen(false)}
-            className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
+            className="mb-2 flex items-center gap-3 rounded-lg p-3 text-sm text-muted-foreground transition hover:bg-muted"
             activeProps={{
               className:
-                'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
+                'mb-2 flex items-center gap-3 rounded-lg bg-primary text-primary-foreground p-3 text-sm transition hover:bg-primary/90',
             }}
           >
             <Network size={20} />
-            <span className="font-medium">Start - API Request</span>
+            <span className="font-medium">Admin Lab</span>
           </Link>
 
-          <div className="flex flex-row justify-between">
-            <Link
-              to="/demo/start/ssr"
-              onClick={() => setIsOpen(false)}
-              className="flex-1 flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
-              activeProps={{
-                className:
-                  'flex-1 flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
-              }}
-            >
-              <StickyNote size={20} />
-              <span className="font-medium">Start - SSR Demos</span>
-            </Link>
-            <button
-              className="p-2 hover:bg-gray-800 rounded-lg transition-colors"
-              onClick={() =>
-                setGroupedExpanded((prev) => ({
-                  ...prev,
-                  StartSSRDemo: !prev.StartSSRDemo,
-                }))
-              }
-            >
-              {groupedExpanded.StartSSRDemo ? (
-                <ChevronDown size={20} />
-              ) : (
-                <ChevronRight size={20} />
-              )}
-            </button>
-          </div>
-          {groupedExpanded.StartSSRDemo && (
-            <div className="flex flex-col ml-4">
-              <Link
-                to="/demo/start/ssr/spa-mode"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
-                activeProps={{
-                  className:
-                    'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
-                }}
-              >
-                <StickyNote size={20} />
-                <span className="font-medium">SPA Mode</span>
-              </Link>
-
-              <Link
-                to="/demo/start/ssr/full-ssr"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
-                activeProps={{
-                  className:
-                    'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
-                }}
-              >
-                <StickyNote size={20} />
-                <span className="font-medium">Full SSR</span>
-              </Link>
-
-              <Link
-                to="/demo/start/ssr/data-only"
-                onClick={() => setIsOpen(false)}
-                className="flex items-center gap-3 p-3 rounded-lg hover:bg-gray-800 transition-colors mb-2"
-                activeProps={{
-                  className:
-                    'flex items-center gap-3 p-3 rounded-lg bg-cyan-600 hover:bg-cyan-700 transition-colors mb-2',
-                }}
-              >
-                <StickyNote size={20} />
-                <span className="font-medium">Data Only</span>
-              </Link>
-            </div>
-          )}
-
-          {/* Demo Links End */}
+          {/* Reserved for future navigation items (profile, history, etc.) */}
         </nav>
       </aside>
     </>

@@ -26,6 +26,8 @@ import { randomUUID } from 'crypto'
 import { checkAdminKey } from '@/server/auth'
 import { ENV } from '@/server/env'
 import { rateLimit } from '@/server/rateLimit'
+import { cacheGet, cacheSet } from '@/server/cache'
+import { recordTelemetry } from '@/server/telemetry'
 
 /**
  * Zod schema: Scholarship personality used for drafting
@@ -91,6 +93,23 @@ export const Route = createFileRoute('/api/draft')({
 
         const input = DraftIn.parse(await request.json())
 
+        const cacheKey = JSON.stringify({
+          kind: 'draft-api',
+          scholarship_name: input.scholarship_name,
+          personality: input.personality,
+          student_profile: input.student_profile,
+          word_target: input.word_target,
+          style: input.style ?? null,
+          version: 1,
+        })
+
+        const cached = cacheGet<ReturnType<typeof DraftOut.parse>>(cacheKey)
+        if (cached) {
+          return new Response(JSON.stringify({ ok: true, ...cached }), {
+            headers: { 'Content-Type': 'application/json' },
+          })
+        }
+
         const system =
           'You are an assistant that drafts scholarship application essays ' +
           'AUTHENTICALLY. Do NOT fabricate achievements. Use only provided facts. ' +
@@ -133,14 +152,19 @@ Rules:
 - No bullet spam in the draft; write in paragraphs.
 `.trim()
 
+        const started = Date.now()
         const res = await askClaude({
           system,
           user,
           max_tokens: 1600,
         })
+        const durationMs = Date.now() - started
 
         try {
           const json = DraftOut.parse(coerceMinifiedJson(extractAnthropicText(res)))
+
+          cacheSet(cacheKey, json, 60 * 60 * 1000)
+          recordTelemetry({ step: 'draft', ok: true, durationMs })
 
           // Optional persistence if both IDs provided
           if (input.scholarship_id && input.student_id) {
@@ -155,6 +179,7 @@ Rules:
             headers: { 'Content-Type': 'application/json' },
           })
         } catch (e: any) {
+          recordTelemetry({ step: 'draft', ok: false, durationMs, error: String(e) })
           return new Response(
             JSON.stringify({ ok: false, error: String(e).slice(0, 4000) }),
             { status: 400, headers: { 'Content-Type': 'application/json' } },

@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite dev --port 3000",
+    "ingest:rich": "node scripts/ingest-rich-scholarships.js data/scholarships.json",
     "build": "vite build",
     "serve": "vite preview",
     "test": "vitest run"
@@ -23,6 +24,7 @@
     "@tanstack/store": "^0.8.0",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "dotenv": "^17.2.3",
     "lucide-react": "^0.544.0",
     "pg": "^8.16.3",
     "react": "^19.2.0",
@@ -31,6 +33,7 @@
     "tailwindcss": "^4.0.6",
     "tw-animate-css": "^1.3.6",
     "undici": "^7.16.0",
+    "uuid": "^13.0.0",
     "vite-tsconfig-paths": "^5.1.4",
     "zod": "^4.1.12"
   },

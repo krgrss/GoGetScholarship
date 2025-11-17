@@ -24,6 +24,8 @@ import { Route as AdminDebugRouteImport } from './routes/admin/debug'
 import { Route as DemoStartServerFuncsRouteImport } from './routes/demo/start.server-funcs'
 import { Route as DemoStartApiRequestRouteImport } from './routes/demo/start.api-request'
 import { Route as DemoApiNamesRouteImport } from './routes/demo/api.names'
+import { Route as ApiScholarshipIdRouteImport } from './routes/api/scholarship/$id'
+import { Route as ApiAdminTelemetryRouteImport } from './routes/api/admin/telemetry'
 import { Route as DemoStartSsrIndexRouteImport } from './routes/demo/start.ssr.index'
 import { Route as DemoStartSsrSpaModeRouteImport } from './routes/demo/start.ssr.spa-mode'
 import { Route as DemoStartSsrFullSsrRouteImport } from './routes/demo/start.ssr.full-ssr'
@@ -104,6 +106,16 @@ const DemoApiNamesRoute = DemoApiNamesRouteImport.update({
   path: '/demo/api/names',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiScholarshipIdRoute = ApiScholarshipIdRouteImport.update({
+  id: '/api/scholarship/$id',
+  path: '/api/scholarship/$id',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAdminTelemetryRoute = ApiAdminTelemetryRouteImport.update({
+  id: '/api/admin/telemetry',
+  path: '/api/admin/telemetry',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const DemoStartSsrIndexRoute = DemoStartSsrIndexRouteImport.update({
   id: '/demo/start/ssr/',
   path: '/demo/start/ssr/',
@@ -138,6 +150,8 @@ export interface FileRoutesByFullPath {
   '/api/rerank': typeof ApiRerankRoute
   '/api/retrieve': typeof ApiRetrieveRoute
   '/scholarship/$id': typeof ScholarshipIdRoute
+  '/api/admin/telemetry': typeof ApiAdminTelemetryRoute
+  '/api/scholarship/$id': typeof ApiScholarshipIdRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
@@ -159,6 +173,8 @@ export interface FileRoutesByTo {
   '/api/rerank': typeof ApiRerankRoute
   '/api/retrieve': typeof ApiRetrieveRoute
   '/scholarship/$id': typeof ScholarshipIdRoute
+  '/api/admin/telemetry': typeof ApiAdminTelemetryRoute
+  '/api/scholarship/$id': typeof ApiScholarshipIdRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
@@ -181,6 +197,8 @@ export interface FileRoutesById {
   '/api/rerank': typeof ApiRerankRoute
   '/api/retrieve': typeof ApiRetrieveRoute
   '/scholarship/$id': typeof ScholarshipIdRoute
+  '/api/admin/telemetry': typeof ApiAdminTelemetryRoute
+  '/api/scholarship/$id': typeof ApiScholarshipIdRoute
   '/demo/api/names': typeof DemoApiNamesRoute
   '/demo/start/api-request': typeof DemoStartApiRequestRoute
   '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
@@ -204,6 +222,8 @@ export interface FileRouteTypes {
     | '/api/rerank'
     | '/api/retrieve'
     | '/scholarship/$id'
+    | '/api/admin/telemetry'
+    | '/api/scholarship/$id'
     | '/demo/api/names'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
@@ -225,6 +245,8 @@ export interface FileRouteTypes {
     | '/api/rerank'
     | '/api/retrieve'
     | '/scholarship/$id'
+    | '/api/admin/telemetry'
+    | '/api/scholarship/$id'
     | '/demo/api/names'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
@@ -246,6 +268,8 @@ export interface FileRouteTypes {
     | '/api/rerank'
     | '/api/retrieve'
     | '/scholarship/$id'
+    | '/api/admin/telemetry'
+    | '/api/scholarship/$id'
     | '/demo/api/names'
     | '/demo/start/api-request'
     | '/demo/start/server-funcs'
@@ -268,6 +292,8 @@ export interface RootRouteChildren {
   ApiRerankRoute: typeof ApiRerankRoute
   ApiRetrieveRoute: typeof ApiRetrieveRoute
   ScholarshipIdRoute: typeof ScholarshipIdRoute
+  ApiAdminTelemetryRoute: typeof ApiAdminTelemetryRoute
+  ApiScholarshipIdRoute: typeof ApiScholarshipIdRoute
   DemoApiNamesRoute: typeof DemoApiNamesRoute
   DemoStartApiRequestRoute: typeof DemoStartApiRequestRoute
   DemoStartServerFuncsRoute: typeof DemoStartServerFuncsRoute
@@ -384,6 +410,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DemoApiNamesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/scholarship/$id': {
+      id: '/api/scholarship/$id'
+      path: '/api/scholarship/$id'
+      fullPath: '/api/scholarship/$id'
+      preLoaderRoute: typeof ApiScholarshipIdRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/admin/telemetry': {
+      id: '/api/admin/telemetry'
+      path: '/api/admin/telemetry'
+      fullPath: '/api/admin/telemetry'
+      preLoaderRoute: typeof ApiAdminTelemetryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/demo/start/ssr/': {
       id: '/demo/start/ssr/'
       path: '/demo/start/ssr'
@@ -428,6 +468,8 @@ const rootRouteChildren: RootRouteChildren = {
   ApiRerankRoute: ApiRerankRoute,
   ApiRetrieveRoute: ApiRetrieveRoute,
   ScholarshipIdRoute: ScholarshipIdRoute,
+  ApiAdminTelemetryRoute: ApiAdminTelemetryRoute,
+  ApiScholarshipIdRoute: ApiScholarshipIdRoute,
   DemoApiNamesRoute: DemoApiNamesRoute,
   DemoStartApiRequestRoute: DemoStartApiRequestRoute,
   DemoStartServerFuncsRoute: DemoStartServerFuncsRoute,

@@ -12,6 +12,8 @@ import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { askClaude } from '@/server/llm/anthropic'
 import { coerceMinifiedJson, extractAnthropicText } from '@/server/llm/json'
+import { cacheGet, cacheSet } from '@/server/cache'
+import { recordTelemetry } from '@/server/telemetry'
 
 /**
  * Zod schema: Candidate scholarship summary for reranking
@@ -58,6 +60,21 @@ export const Route = createFileRoute('/api/rerank')({
       POST: async ({ request }) => {
         const input = RerankIn.parse(await request.json())
 
+        const cacheKey = JSON.stringify({
+          kind: 'rerank-api',
+          student_summary: input.student_summary,
+          candidates: input.candidates,
+          top_k: input.top_k,
+          version: 1,
+        })
+
+        const cached = cacheGet<{ ranking: { id: string; score: number; rationale: string }[] }>(cacheKey)
+        if (cached) {
+          return new Response(JSON.stringify({ ok: true, ranking: cached.ranking }), {
+            headers: { 'Content-Type': 'application/json' },
+          })
+        }
+
         const system =
           'You are a setwise reranker inspired by Rank-R1. ' +
           'Rank ALL candidates globally using pairwise and listwise reasoning. ' +
@@ -82,22 +99,28 @@ Constraints:
 - Keep rationales short and reference concrete alignments (GPA, projects, fields, themes).
 `.trim()
 
+        const started = Date.now()
         const res = await askClaude({
           system,
           user,
           max_tokens: 1200,
         })
+        const durationMs = Date.now() - started
 
         try {
           const json = RerankOut.parse(coerceMinifiedJson(extractAnthropicText(res)))
-          // Optionally slice to top_k (but keep original order from model)
           const top = json.ranking
             .slice(0, input.top_k)
             .map((r) => ({ ...r, score: Math.round(r.score) }))
+
+          cacheSet(cacheKey, { ranking: top }, 24 * 60 * 60 * 1000)
+          recordTelemetry({ step: 'rerank', ok: true, durationMs, meta: { count: top.length } })
+
           return new Response(JSON.stringify({ ok: true, ranking: top }), {
             headers: { 'Content-Type': 'application/json' },
           })
         } catch (e: any) {
+          recordTelemetry({ step: 'rerank', ok: false, durationMs, error: String(e) })
           return new Response(
             JSON.stringify({ ok: false, error: String(e).slice(0, 4000) }),
             { status: 400, headers: { 'Content-Type': 'application/json' } },
