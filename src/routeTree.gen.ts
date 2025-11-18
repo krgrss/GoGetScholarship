@@ -10,6 +10,8 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ProfileRouteImport } from './routes/profile'
+import { Route as OnboardingRouteImport } from './routes/onboarding'
+import { Route as MatchesRouteImport } from './routes/matches'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ScholarshipIdRouteImport } from './routes/scholarship/$id'
 import { Route as ApiRetrieveRouteImport } from './routes/api/retrieve'
@@ -34,6 +36,16 @@ import { Route as DemoStartSsrDataOnlyRouteImport } from './routes/demo/start.ss
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
   path: '/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const OnboardingRoute = OnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MatchesRoute = MatchesRouteImport.update({
+  id: '/matches',
+  path: '/matches',
   getParentRoute: () => rootRouteImport,
 } as any)
 const IndexRoute = IndexRouteImport.update({
@@ -139,6 +151,8 @@ const DemoStartSsrDataOnlyRoute = DemoStartSsrDataOnlyRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/matches': typeof MatchesRoute
+  '/onboarding': typeof OnboardingRoute
   '/profile': typeof ProfileRoute
   '/admin/debug': typeof AdminDebugRoute
   '/api/claude-health': typeof ApiClaudeHealthRoute
@@ -162,6 +176,8 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/matches': typeof MatchesRoute
+  '/onboarding': typeof OnboardingRoute
   '/profile': typeof ProfileRoute
   '/admin/debug': typeof AdminDebugRoute
   '/api/claude-health': typeof ApiClaudeHealthRoute
@@ -186,6 +202,8 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/matches': typeof MatchesRoute
+  '/onboarding': typeof OnboardingRoute
   '/profile': typeof ProfileRoute
   '/admin/debug': typeof AdminDebugRoute
   '/api/claude-health': typeof ApiClaudeHealthRoute
@@ -211,6 +229,8 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/matches'
+    | '/onboarding'
     | '/profile'
     | '/admin/debug'
     | '/api/claude-health'
@@ -234,6 +254,8 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/matches'
+    | '/onboarding'
     | '/profile'
     | '/admin/debug'
     | '/api/claude-health'
@@ -257,6 +279,8 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/matches'
+    | '/onboarding'
     | '/profile'
     | '/admin/debug'
     | '/api/claude-health'
@@ -281,6 +305,8 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  MatchesRoute: typeof MatchesRoute
+  OnboardingRoute: typeof OnboardingRoute
   ProfileRoute: typeof ProfileRoute
   AdminDebugRoute: typeof AdminDebugRoute
   ApiClaudeHealthRoute: typeof ApiClaudeHealthRoute
@@ -310,6 +336,20 @@ declare module '@tanstack/react-router' {
       path: '/profile'
       fullPath: '/profile'
       preLoaderRoute: typeof ProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/onboarding': {
+      id: '/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof OnboardingRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/matches': {
+      id: '/matches'
+      path: '/matches'
+      fullPath: '/matches'
+      preLoaderRoute: typeof MatchesRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/': {
@@ -457,6 +497,8 @@ declare module '@tanstack/react-router' {
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  MatchesRoute: MatchesRoute,
+  OnboardingRoute: OnboardingRoute,
   ProfileRoute: ProfileRoute,
   AdminDebugRoute: AdminDebugRoute,
   ApiClaudeHealthRoute: ApiClaudeHealthRoute,

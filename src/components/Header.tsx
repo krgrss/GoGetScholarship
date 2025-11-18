@@ -1,25 +1,10 @@
 import { Link } from '@tanstack/react-router'
 
 import * as React from 'react'
-import {
-  Activity,
-  ChevronDown,
-  ChevronRight,
-  Home,
-  Menu,
-  Network,
-  SquareFunction,
-  StickyNote,
-  SunMedium,
-  MoonStar,
-  X,
-} from 'lucide-react'
+import { Activity, Home, Menu, MoonStar, Network, SunMedium, X } from 'lucide-react'
 
 export default function Header() {
   const [isOpen, setIsOpen] = React.useState(false)
-  const [groupedExpanded, setGroupedExpanded] = React.useState<
-    Record<string, boolean>
-  >({})
   const [isDark, setIsDark] = React.useState<boolean>(() => {
     if (typeof window === 'undefined') return false
     return document.documentElement.classList.contains('dark')
@@ -41,7 +26,7 @@ export default function Header() {
   return (
     <>
       <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
+        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
           <div className="flex items-center gap-3">
             <button
               onClick={() => setIsOpen(true)}
@@ -59,6 +44,29 @@ export default function Header() {
               </span>
             </Link>
           </div>
+
+          <nav className="hidden items-center gap-4 text-xs font-medium text-muted-foreground md:flex">
+            <Link
+              to="/matches"
+              className="transition hover:text-foreground"
+              activeProps={{
+                className:
+                  'text-foreground underline decoration-primary/60 underline-offset-4',
+              }}
+            >
+              Matches
+            </Link>
+            <Link
+              to="/"
+              className="transition hover:text-foreground"
+              activeProps={{
+                className:
+                  'text-foreground underline decoration-primary/60 underline-offset-4',
+              }}
+            >
+              Dashboard
+            </Link>
+          </nav>
 
           <div className="flex items-center gap-3">
             <Link
@@ -106,6 +114,19 @@ export default function Header() {
 
         <nav className="flex-1 overflow-y-auto p-4">
           <Link
+            to="/matches"
+            onClick={() => setIsOpen(false)}
+            className="mb-2 flex items-center gap-3 rounded-lg p-3 text-sm text-muted-foreground transition hover:bg-muted"
+            activeProps={{
+              className:
+                'mb-2 flex items-center gap-3 rounded-lg bg-primary text-primary-foreground p-3 text-sm transition hover:bg-primary/90',
+            }}
+          >
+            <Network size={20} />
+            <span className="font-medium">Matches</span>
+          </Link>
+
+          <Link
             to="/"
             onClick={() => setIsOpen(false)}
             className="mb-2 flex items-center gap-3 rounded-lg p-3 text-sm text-muted-foreground transition hover:bg-muted"
@@ -127,11 +148,9 @@ export default function Header() {
                 'mb-2 flex items-center gap-3 rounded-lg bg-primary text-primary-foreground p-3 text-sm transition hover:bg-primary/90',
             }}
           >
-            <Network size={20} />
+            <Activity size={20} />
             <span className="font-medium">Admin Lab</span>
           </Link>
-
-          {/* Reserved for future navigation items (profile, history, etc.) */}
         </nav>
       </aside>
     </>
