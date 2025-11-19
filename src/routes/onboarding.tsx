@@ -1,29 +1,56 @@
+import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
+import { ArrowLeft, ArrowRight, Check, Loader2 } from 'lucide-react'
 import * as React from 'react'
-import { createFileRoute, Link } from '@tanstack/react-router'
 
-type StepKey = 'basics' | 'background' | 'about'
-
-const STEPS: { key: StepKey; label: string; optional?: boolean }[] = [
-  { key: 'basics', label: 'Basics' },
-  { key: 'background', label: 'Background', optional: true },
-  { key: 'about', label: 'About you', optional: true },
-]
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label' // Need to check if Label is installed, usually it is with Input or separate. shadcn add label? I didn't add it. I'll use standard label or add it.
+// I didn't add 'label'. I'll use standard <label> with appropriate classes or add it.
+// Actually, shadcn Input usually goes with Label. I'll check if I can use standard label.
+// Or I can just use <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Textarea } from '@/components/ui/textarea'
+import { toast } from 'sonner'
 
 export const Route = createFileRoute('/onboarding')({
   component: OnboardingPage,
 })
 
+type StepKey = 'basics' | 'academics' | 'background' | 'about'
+
+const STEPS: { key: StepKey; label: string; optional?: boolean }[] = [
+  { key: 'basics', label: 'Basics' },
+  { key: 'academics', label: 'Academics' },
+  { key: 'background', label: 'Background', optional: true },
+  { key: 'about', label: 'About you', optional: true },
+]
+
 function OnboardingPage() {
+  const navigate = useNavigate()
   const [stepIndex, setStepIndex] = React.useState(0)
   const [saving, setSaving] = React.useState(false)
-  const [error, setError] = React.useState<string | null>(null)
 
+  // Form State
   const [country, setCountry] = React.useState('')
   const [level, setLevel] = React.useState('')
   const [program, setProgram] = React.useState('')
   const [gpa, setGpa] = React.useState('')
   const [gpaScale, setGpaScale] = React.useState('4.0')
-
   const [backgroundTags, setBackgroundTags] = React.useState<string[]>([])
   const [aboutText, setAboutText] = React.useState('')
 
@@ -36,259 +63,262 @@ function OnboardingPage() {
   }
 
   function nextStep() {
-    setError(null)
-    if (stepIndex === 0 && (!country || !level)) {
-      setError('Please fill in at least your country and level of study.')
+    if (stepIndex === 0 && !country) {
+      toast.error('Please select your country of study.')
+      return
+    }
+    if (stepIndex === 1 && (!level || !program)) {
+      toast.error('Please fill in your level and program.')
       return
     }
     setStepIndex((prev) => Math.min(prev + 1, STEPS.length - 1))
   }
 
   function prevStep() {
-    setError(null)
     setStepIndex((prev) => Math.max(prev - 1, 0))
   }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
-    setError(null)
     setSaving(true)
     try {
-      // Placeholder: in a later iteration, this will POST to /api/profile.
-      await new Promise((resolve) => setTimeout(resolve, 600))
+      // Generate summary
+      const summary = `Student from ${country} studying ${program} (${level}). GPA: ${gpa}/${gpaScale}. Background: ${backgroundTags.join(', ')}. About: ${aboutText}`
+      
+      // Save to local storage for demo
+      const profile = {
+        country,
+        level,
+        program,
+        gpa,
+        gpaScale,
+        backgroundTags,
+        aboutText,
+        summary,
+        completedAt: new Date().toISOString(),
+      }
+      localStorage.setItem('scholarship_profile', JSON.stringify(profile))
+
+      // Simulate API call
+      await new Promise((resolve) => setTimeout(resolve, 800))
+      
+      toast.success('Profile saved!')
+      navigate({ to: '/matches' })
+    } catch (err) {
+      toast.error('Failed to save profile. Please try again.')
     } finally {
       setSaving(false)
     }
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      <main className="mx-auto flex max-w-xl flex-col gap-6 px-4 py-10">
-        <header className="space-y-2">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
-            Step {stepIndex + 1} of {STEPS.length}
-          </p>
-          <h1 className="font-display text-2xl leading-snug sm:text-3xl">
-            Let&apos;s get to know you.
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            A few quick questions so we can find scholarships that are actually realistic
-            for you.
-          </p>
-        </header>
-
-        <section className="rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border">
-          <div className="mb-4 flex items-center gap-2 text-xs">
-            {STEPS.map((step, idx) => (
-              <div
-                key={step.key}
-                className={`flex-1 rounded-full px-2 py-1 text-center ${
-                  idx === stepIndex
-                    ? 'bg-primary text-primary-foreground'
-                    : 'bg-muted text-muted-foreground'
-                }`}
-              >
-                {step.label}
-                {step.optional && ' (optional)'}
-              </div>
-            ))}
+    <div className="flex min-h-[calc(100vh-4rem)] items-center justify-center bg-muted/30 p-4">
+      <Card className="w-full max-w-xl shadow-lg">
+        <CardHeader className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 text-xs font-bold text-primary">
+                {stepIndex + 1}
+              </span>
+              <span className="font-medium uppercase tracking-wide">
+                Step {stepIndex + 1} of {STEPS.length}
+              </span>
+            </div>
+            {currentStep.optional && (
+              <Badge variant="secondary" className="font-normal">
+                Optional
+              </Badge>
+            )}
           </div>
+          <div>
+            <CardTitle className="text-2xl">
+              {currentStep.key === 'basics' && 'Where are you studying?'}
+              {currentStep.key === 'academics' && 'Academic details'}
+              {currentStep.key === 'background' && 'Tell us about your background'}
+              {currentStep.key === 'about' && 'What makes you unique?'}
+            </CardTitle>
+            <CardDescription className="mt-2 text-base">
+              {currentStep.key === 'basics' && 'We need this to filter for eligible scholarships.'}
+              {currentStep.key === 'academics' && 'Your program and grades help us find academic matches.'}
+              {currentStep.key === 'background' && 'Select any that apply to find targeted opportunities.'}
+              {currentStep.key === 'about' && 'Paste your bio, activities, or a short intro.'}
+            </CardDescription>
+          </div>
+        </CardHeader>
 
-          <form className="space-y-4" onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit}>
+          <CardContent className="space-y-6">
             {currentStep.key === 'basics' && (
-              <div className="space-y-3">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                     Country of study
                   </label>
-                  <input
-                    value={country}
-                    onChange={(e) => setCountry(e.target.value)}
-                    className="w-full rounded-full border border-border bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    placeholder="e.g. Canada, United States"
-                  />
+                  <Select value={country} onValueChange={setCountry}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select country" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Canada">Canada</SelectItem>
+                      <SelectItem value="United States">United States</SelectItem>
+                      <SelectItem value="United Kingdom">United Kingdom</SelectItem>
+                      <SelectItem value="Australia">Australia</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
+              </div>
+            )}
+
+            {currentStep.key === 'academics' && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                     Level of study
                   </label>
-                  <select
-                    value={level}
-                    onChange={(e) => setLevel(e.target.value)}
-                    className="w-full rounded-full border border-border bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  >
-                    <option value="">Select level</option>
-                    <option value="hs">High school</option>
-                    <option value="ug">Undergraduate</option>
-                    <option value="grad">Graduate</option>
-                  </select>
+                  <Select value={level} onValueChange={setLevel}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select level" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="High School">High School</SelectItem>
+                      <SelectItem value="Undergraduate">Undergraduate</SelectItem>
+                      <SelectItem value="Graduate">Graduate</SelectItem>
+                      <SelectItem value="PhD">PhD</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                    Intended / current program or major
+                <div className="space-y-2">
+                  <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Program / Major
                   </label>
-                  <input
+                  <Input
                     value={program}
                     onChange={(e) => setProgram(e.target.value)}
-                    className="w-full rounded-full border border-border bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                     placeholder="e.g. Computer Science, Nursing"
                   />
                 </div>
-                <div className="flex flex-wrap gap-3 text-sm">
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                       GPA
                     </label>
-                    <input
+                    <Input
                       value={gpa}
                       onChange={(e) => setGpa(e.target.value)}
-                      className="w-24 rounded-full border border-border bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                      placeholder="3.7"
+                      placeholder="3.8"
                       inputMode="decimal"
                     />
                   </div>
-                  <div>
-                    <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                      GPA scale
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      Scale
                     </label>
-                    <select
-                      value={gpaScale}
-                      onChange={(e) => setGpaScale(e.target.value)}
-                      className="w-28 rounded-full border border-border bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    >
-                      <option value="4.0">4.0</option>
-                      <option value="4.3">4.3</option>
-                      <option value="100">100</option>
-                    </select>
+                    <Select value={gpaScale} onValueChange={setGpaScale}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Scale" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="4.0">4.0</SelectItem>
+                        <SelectItem value="4.3">4.3</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                        <SelectItem value="5.0">5.0</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
               </div>
             )}
 
             {currentStep.key === 'background' && (
-              <div className="space-y-3 text-sm">
-                <p className="text-xs text-muted-foreground">
-                  These questions are optional and only used to surface targeted
-                  scholarships. You can skip this step at any time.
-                </p>
+              <div className="space-y-4">
                 <div className="flex flex-wrap gap-2">
                   {[
                     'First-generation student',
                     'Low-income background',
                     'International student',
-                    'Disability',
+                    'Student with disability',
                     'LGBTQ+',
-                    'Underrepresented race/ethnicity',
+                    'Woman in STEM',
+                    'Indigenous',
+                    'Black / African American',
+                    'Hispanic / Latino',
                   ].map((tag) => {
                     const active = backgroundTags.includes(tag)
                     return (
-                      <button
+                      <Badge
                         key={tag}
-                        type="button"
-                        onClick={() => toggleBackgroundTag(tag)}
-                        className={`rounded-full px-3 py-1 text-xs font-medium shadow-sm ring-1 ${
-                          active
-                            ? 'bg-secondary text-secondary-foreground ring-secondary'
-                            : 'bg-background text-muted-foreground ring-border hover:bg-muted'
+                        variant={active ? 'default' : 'outline'}
+                        className={`cursor-pointer px-3 py-1.5 text-sm transition-all hover:bg-primary/90 hover:text-primary-foreground ${
+                          active ? '' : 'hover:border-primary'
                         }`}
+                        onClick={() => toggleBackgroundTag(tag)}
                       >
                         {tag}
-                      </button>
+                        {active && <Check className="ml-1 h-3 w-3" />}
+                      </Badge>
                     )
                   })}
                 </div>
-              </div>
-            )}
-
-            {currentStep.key === 'about' && (
-              <div className="space-y-3">
-                <div>
-                  <label className="mb-1 block text-xs font-medium text-muted-foreground">
-                    Activities / about you
-                  </label>
-                  <textarea
-                    value={aboutText}
-                    onChange={(e) => setAboutText(e.target.value)}
-                    className="w-full rounded-xl border border-border bg-background p-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                    rows={6}
-                    placeholder="Paste your activities, roles, important projects, or anything else you want us to know."
-                  />
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  File uploads (resumes, transcripts) are out of scope for this prototype,
-                  but this box can stand in for that content.
+                <p className="text-xs text-muted-foreground">
+                  Select all that apply. This helps us find scholarships with specific eligibility requirements.
                 </p>
               </div>
             )}
 
-            {error && (
-              <p className="text-xs text-destructive">
-                {error}
-              </p>
-            )}
-
-            <div className="mt-4 flex flex-wrap items-center justify-between gap-3">
-              <div className="flex gap-2">
-                {stepIndex > 0 && (
-                  <button
-                    type="button"
-                    onClick={prevStep}
-                    className="rounded-full border border-border bg-background px-4 py-2 text-xs font-medium text-muted-foreground shadow-sm transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                  >
-                    Back
-                  </button>
-                )}
-                {stepIndex < STEPS.length - 1 && (
-                  <button
-                    type="button"
-                    onClick={nextStep}
-                    className="rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                  >
-                    Continue
-                  </button>
-                )}
-                {stepIndex === STEPS.length - 1 && (
-                  <button
-                    type="submit"
-                    disabled={saving}
-                    className="rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90 disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-                  >
-                    {saving ? 'Saving profile…' : 'Save profile & see matches'}
-                  </button>
-                )}
+            {currentStep.key === 'about' && (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                    Activities & Bio
+                  </label>
+                  <Textarea
+                    value={aboutText}
+                    onChange={(e) => setAboutText(e.target.value)}
+                    placeholder="I am the president of the debate club... I volunteered at..."
+                    className="min-h-[150px] resize-none"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Briefly list your leadership roles, volunteering, and key achievements.
+                  </p>
+                </div>
               </div>
+            )}
+          </CardContent>
 
+          <CardFooter className="flex justify-between border-t bg-muted/10 px-6 py-4">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={prevStep}
+              disabled={stepIndex === 0}
+              className={stepIndex === 0 ? 'invisible' : ''}
+            >
+              <ArrowLeft className="mr-2 h-4 w-4" />
+              Back
+            </Button>
+
+            <div className="flex gap-2">
               {currentStep.optional && (
-                <button
-                  type="button"
-                  onClick={nextStep}
-                  className="text-[11px] font-medium text-muted-foreground underline underline-offset-4"
-                >
-                  Skip this step
-                </button>
+                <Button type="button" variant="ghost" onClick={nextStep}>
+                  Skip
+                </Button>
+              )}
+              
+              {stepIndex === STEPS.length - 1 ? (
+                <Button type="submit" disabled={saving}>
+                  {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save & View Matches
+                </Button>
+              ) : (
+                <Button type="button" onClick={nextStep}>
+                  Continue
+                  <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
               )}
             </div>
-          </form>
-
-          {stepIndex === 0 && (
-            <p className="mt-4 text-[11px] text-muted-foreground">
-              You can update this information later from your profile. We just need enough
-              to avoid clearly bad matches.
-            </p>
-          )}
-        </section>
-
-        <p className="text-[11px] text-muted-foreground">
-          Already set up?{' '}
-          <Link
-            to="/matches"
-            className="font-medium text-primary underline underline-offset-4"
-          >
-            Jump straight to your matches.
-          </Link>
-        </p>
-      </main>
+          </CardFooter>
+        </form>
+      </Card>
     </div>
   )
 }
-

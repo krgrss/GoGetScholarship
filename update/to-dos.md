@@ -12,6 +12,7 @@
 - [ ] Ensure `/api/match` + `/api/rerank` still perform well with the richer summary (no obvious irrelevant top results).
 - [ ] A checkbox to use /api/retrieve + /api/match + /api/rerank in tests (not just /api/match).
 - [ ] A checkbox to compute and record good@10 / (good+meh)@10 for 3 demo profiles directly into docs/evaluation-metrics.md.
+- [ ] Update /api/profile and the backing tables to the documented `student_profiles` shape (level_of_study, fields_of_study, gpa_scale, demographic_self, profile_summary + embedding) and swap match/explain-fit/draft flows to read from that instead of the legacy `students`/`student_embeddings` pair.
 
 ## 3. Scholarship Detail & Drafting
 - [ ] For 3-5 demo scholarships, run `/api/personality` and store profiles so the sidebar and drafts are well-targeted.
@@ -63,6 +64,7 @@ Add a checkbox to capture 2–3 before/after essay pairs and log average improve
 - [ ] Decide where to store application components/workload (e.g., in `scholarships.metadata` or a dedicated table as per `docs/db-requirements.md`).
 - [ ] Implement a simple per-scholarship task list on `/scholarship/$id` (e.g., "Essay", "Recs", "Transcript") and mark completion in local state for the demo.
 - [ ] If time allows, surface a rough workload chip ("Light / Medium / Heavy") derived from the components on both matches cards and the scholarship page.
+- [ ] Bring the scholarships data model in line with `docs/system-architecture.md`/`docs/db-requirements.md` (explicit deadline, level_of_study/fields_of_study arrays, country_eligibility/citizenship, demographic_focus, application_components/application_effort) so planner generation and workload chips aren’t depending on ad-hoc metadata.
 
 ## 11. Dashboard & Low Extra Work Suggestions
 - [ ] Create a minimal `/dashboard` route that shows scholarships the student has opened or drafted for (local/session-based is fine for hackathon).
@@ -77,4 +79,3 @@ Add a checkbox to capture 2–3 before/after essay pairs and log average improve
 ## 13. LangGraph & Architecture Alignment (Stretch)
 - [ ] Sketch or stub LangGraph-style orchestrator functions (ExplainFitGraph, PlannerGraph, DraftEssayGraph, RubricCoachGraph) that wrap the existing APIs, even if they stay in-process for the hackathon.
 - [ ] Update `docs/system-architecture.md` and `docs/architecture_2.md` with any deviations between the original graph plan and the implemented API-based flows.
-
