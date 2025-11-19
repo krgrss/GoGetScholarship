@@ -7,7 +7,7 @@
  * - assemble structured response + basic telemetry
  */
 import { embedWithVoyage } from './embeddings/voyage'
-import { topKByEmbedding } from './db'
+import { EligibilityFilter, topKByEmbedding } from './db'
 import { rerankWithClaude } from './rerank'
 import { cacheGet, cacheSet } from './cache'
 import { recordTelemetry } from './telemetry'
@@ -17,6 +17,7 @@ export type MatchRequest = {
   minGpa?: number
   k?: number
   useReranker?: boolean
+  eligibility?: EligibilityFilter
 }
 
 export type MatchRow = {
@@ -77,7 +78,7 @@ export async function runMatchWorkflow(req: MatchRequest): Promise<MatchResponse
   const t1 = Date.now()
   let rows: MatchRow[]
   try {
-    const dbRows = await topKByEmbedding(embedding, k, req.minGpa ?? null)
+    const dbRows = await topKByEmbedding(embedding, k, req.minGpa ?? null, req.eligibility)
     rows = dbRows as MatchRow[]
   } catch (e: any) {
     const durationMs = Date.now() - t1
@@ -240,4 +241,3 @@ export async function runMatchWorkflow(req: MatchRequest): Promise<MatchResponse
     }
   }
 }
-

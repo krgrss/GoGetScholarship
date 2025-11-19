@@ -14,24 +14,22 @@ import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MatchesRouteImport } from './routes/matches'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ScholarshipIdRouteImport } from './routes/scholarship/$id'
+import { Route as ApiRubricRouteImport } from './routes/api/rubric'
 import { Route as ApiRetrieveRouteImport } from './routes/api/retrieve'
 import { Route as ApiRerankRouteImport } from './routes/api/rerank'
+import { Route as ApiProfileRouteImport } from './routes/api/profile'
+import { Route as ApiPlanRouteImport } from './routes/api/plan'
 import { Route as ApiPersonalityRouteImport } from './routes/api/personality'
 import { Route as ApiMatchRouteImport } from './routes/api/match'
 import { Route as ApiIngestRouteImport } from './routes/api/ingest'
+import { Route as ApiGradeEssayRouteImport } from './routes/api/grade-essay'
+import { Route as ApiExplainFitRouteImport } from './routes/api/explain-fit'
 import { Route as ApiDraftRouteImport } from './routes/api/draft'
 import { Route as ApiDbHealthRouteImport } from './routes/api/db-health'
 import { Route as ApiClaudeHealthRouteImport } from './routes/api/claude-health'
 import { Route as AdminDebugRouteImport } from './routes/admin/debug'
-import { Route as DemoStartServerFuncsRouteImport } from './routes/demo/start.server-funcs'
-import { Route as DemoStartApiRequestRouteImport } from './routes/demo/start.api-request'
-import { Route as DemoApiNamesRouteImport } from './routes/demo/api.names'
 import { Route as ApiScholarshipIdRouteImport } from './routes/api/scholarship/$id'
 import { Route as ApiAdminTelemetryRouteImport } from './routes/api/admin/telemetry'
-import { Route as DemoStartSsrIndexRouteImport } from './routes/demo/start.ssr.index'
-import { Route as DemoStartSsrSpaModeRouteImport } from './routes/demo/start.ssr.spa-mode'
-import { Route as DemoStartSsrFullSsrRouteImport } from './routes/demo/start.ssr.full-ssr'
-import { Route as DemoStartSsrDataOnlyRouteImport } from './routes/demo/start.ssr.data-only'
 
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
@@ -58,6 +56,11 @@ const ScholarshipIdRoute = ScholarshipIdRouteImport.update({
   path: '/scholarship/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiRubricRoute = ApiRubricRouteImport.update({
+  id: '/api/rubric',
+  path: '/api/rubric',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiRetrieveRoute = ApiRetrieveRouteImport.update({
   id: '/api/retrieve',
   path: '/api/retrieve',
@@ -66,6 +69,16 @@ const ApiRetrieveRoute = ApiRetrieveRouteImport.update({
 const ApiRerankRoute = ApiRerankRouteImport.update({
   id: '/api/rerank',
   path: '/api/rerank',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiProfileRoute = ApiProfileRouteImport.update({
+  id: '/api/profile',
+  path: '/api/profile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiPlanRoute = ApiPlanRouteImport.update({
+  id: '/api/plan',
+  path: '/api/plan',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiPersonalityRoute = ApiPersonalityRouteImport.update({
@@ -81,6 +94,16 @@ const ApiMatchRoute = ApiMatchRouteImport.update({
 const ApiIngestRoute = ApiIngestRouteImport.update({
   id: '/api/ingest',
   path: '/api/ingest',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiGradeEssayRoute = ApiGradeEssayRouteImport.update({
+  id: '/api/grade-essay',
+  path: '/api/grade-essay',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiExplainFitRoute = ApiExplainFitRouteImport.update({
+  id: '/api/explain-fit',
+  path: '/api/explain-fit',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiDraftRoute = ApiDraftRouteImport.update({
@@ -103,21 +126,6 @@ const AdminDebugRoute = AdminDebugRouteImport.update({
   path: '/admin/debug',
   getParentRoute: () => rootRouteImport,
 } as any)
-const DemoStartServerFuncsRoute = DemoStartServerFuncsRouteImport.update({
-  id: '/demo/start/server-funcs',
-  path: '/demo/start/server-funcs',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DemoStartApiRequestRoute = DemoStartApiRequestRouteImport.update({
-  id: '/demo/start/api-request',
-  path: '/demo/start/api-request',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DemoApiNamesRoute = DemoApiNamesRouteImport.update({
-  id: '/demo/api/names',
-  path: '/demo/api/names',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const ApiScholarshipIdRoute = ApiScholarshipIdRouteImport.update({
   id: '/api/scholarship/$id',
   path: '/api/scholarship/$id',
@@ -126,26 +134,6 @@ const ApiScholarshipIdRoute = ApiScholarshipIdRouteImport.update({
 const ApiAdminTelemetryRoute = ApiAdminTelemetryRouteImport.update({
   id: '/api/admin/telemetry',
   path: '/api/admin/telemetry',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DemoStartSsrIndexRoute = DemoStartSsrIndexRouteImport.update({
-  id: '/demo/start/ssr/',
-  path: '/demo/start/ssr/',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DemoStartSsrSpaModeRoute = DemoStartSsrSpaModeRouteImport.update({
-  id: '/demo/start/ssr/spa-mode',
-  path: '/demo/start/ssr/spa-mode',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DemoStartSsrFullSsrRoute = DemoStartSsrFullSsrRouteImport.update({
-  id: '/demo/start/ssr/full-ssr',
-  path: '/demo/start/ssr/full-ssr',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const DemoStartSsrDataOnlyRoute = DemoStartSsrDataOnlyRouteImport.update({
-  id: '/demo/start/ssr/data-only',
-  path: '/demo/start/ssr/data-only',
   getParentRoute: () => rootRouteImport,
 } as any)
 
@@ -158,21 +146,19 @@ export interface FileRoutesByFullPath {
   '/api/claude-health': typeof ApiClaudeHealthRoute
   '/api/db-health': typeof ApiDbHealthRoute
   '/api/draft': typeof ApiDraftRoute
+  '/api/explain-fit': typeof ApiExplainFitRoute
+  '/api/grade-essay': typeof ApiGradeEssayRoute
   '/api/ingest': typeof ApiIngestRoute
   '/api/match': typeof ApiMatchRoute
   '/api/personality': typeof ApiPersonalityRoute
+  '/api/plan': typeof ApiPlanRoute
+  '/api/profile': typeof ApiProfileRoute
   '/api/rerank': typeof ApiRerankRoute
   '/api/retrieve': typeof ApiRetrieveRoute
+  '/api/rubric': typeof ApiRubricRoute
   '/scholarship/$id': typeof ScholarshipIdRoute
   '/api/admin/telemetry': typeof ApiAdminTelemetryRoute
   '/api/scholarship/$id': typeof ApiScholarshipIdRoute
-  '/demo/api/names': typeof DemoApiNamesRoute
-  '/demo/start/api-request': typeof DemoStartApiRequestRoute
-  '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
-  '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
-  '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
-  '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
-  '/demo/start/ssr': typeof DemoStartSsrIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -183,21 +169,19 @@ export interface FileRoutesByTo {
   '/api/claude-health': typeof ApiClaudeHealthRoute
   '/api/db-health': typeof ApiDbHealthRoute
   '/api/draft': typeof ApiDraftRoute
+  '/api/explain-fit': typeof ApiExplainFitRoute
+  '/api/grade-essay': typeof ApiGradeEssayRoute
   '/api/ingest': typeof ApiIngestRoute
   '/api/match': typeof ApiMatchRoute
   '/api/personality': typeof ApiPersonalityRoute
+  '/api/plan': typeof ApiPlanRoute
+  '/api/profile': typeof ApiProfileRoute
   '/api/rerank': typeof ApiRerankRoute
   '/api/retrieve': typeof ApiRetrieveRoute
+  '/api/rubric': typeof ApiRubricRoute
   '/scholarship/$id': typeof ScholarshipIdRoute
   '/api/admin/telemetry': typeof ApiAdminTelemetryRoute
   '/api/scholarship/$id': typeof ApiScholarshipIdRoute
-  '/demo/api/names': typeof DemoApiNamesRoute
-  '/demo/start/api-request': typeof DemoStartApiRequestRoute
-  '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
-  '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
-  '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
-  '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
-  '/demo/start/ssr': typeof DemoStartSsrIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -209,21 +193,19 @@ export interface FileRoutesById {
   '/api/claude-health': typeof ApiClaudeHealthRoute
   '/api/db-health': typeof ApiDbHealthRoute
   '/api/draft': typeof ApiDraftRoute
+  '/api/explain-fit': typeof ApiExplainFitRoute
+  '/api/grade-essay': typeof ApiGradeEssayRoute
   '/api/ingest': typeof ApiIngestRoute
   '/api/match': typeof ApiMatchRoute
   '/api/personality': typeof ApiPersonalityRoute
+  '/api/plan': typeof ApiPlanRoute
+  '/api/profile': typeof ApiProfileRoute
   '/api/rerank': typeof ApiRerankRoute
   '/api/retrieve': typeof ApiRetrieveRoute
+  '/api/rubric': typeof ApiRubricRoute
   '/scholarship/$id': typeof ScholarshipIdRoute
   '/api/admin/telemetry': typeof ApiAdminTelemetryRoute
   '/api/scholarship/$id': typeof ApiScholarshipIdRoute
-  '/demo/api/names': typeof DemoApiNamesRoute
-  '/demo/start/api-request': typeof DemoStartApiRequestRoute
-  '/demo/start/server-funcs': typeof DemoStartServerFuncsRoute
-  '/demo/start/ssr/data-only': typeof DemoStartSsrDataOnlyRoute
-  '/demo/start/ssr/full-ssr': typeof DemoStartSsrFullSsrRoute
-  '/demo/start/ssr/spa-mode': typeof DemoStartSsrSpaModeRoute
-  '/demo/start/ssr/': typeof DemoStartSsrIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -236,21 +218,19 @@ export interface FileRouteTypes {
     | '/api/claude-health'
     | '/api/db-health'
     | '/api/draft'
+    | '/api/explain-fit'
+    | '/api/grade-essay'
     | '/api/ingest'
     | '/api/match'
     | '/api/personality'
+    | '/api/plan'
+    | '/api/profile'
     | '/api/rerank'
     | '/api/retrieve'
+    | '/api/rubric'
     | '/scholarship/$id'
     | '/api/admin/telemetry'
     | '/api/scholarship/$id'
-    | '/demo/api/names'
-    | '/demo/start/api-request'
-    | '/demo/start/server-funcs'
-    | '/demo/start/ssr/data-only'
-    | '/demo/start/ssr/full-ssr'
-    | '/demo/start/ssr/spa-mode'
-    | '/demo/start/ssr'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
@@ -261,21 +241,19 @@ export interface FileRouteTypes {
     | '/api/claude-health'
     | '/api/db-health'
     | '/api/draft'
+    | '/api/explain-fit'
+    | '/api/grade-essay'
     | '/api/ingest'
     | '/api/match'
     | '/api/personality'
+    | '/api/plan'
+    | '/api/profile'
     | '/api/rerank'
     | '/api/retrieve'
+    | '/api/rubric'
     | '/scholarship/$id'
     | '/api/admin/telemetry'
     | '/api/scholarship/$id'
-    | '/demo/api/names'
-    | '/demo/start/api-request'
-    | '/demo/start/server-funcs'
-    | '/demo/start/ssr/data-only'
-    | '/demo/start/ssr/full-ssr'
-    | '/demo/start/ssr/spa-mode'
-    | '/demo/start/ssr'
   id:
     | '__root__'
     | '/'
@@ -286,21 +264,19 @@ export interface FileRouteTypes {
     | '/api/claude-health'
     | '/api/db-health'
     | '/api/draft'
+    | '/api/explain-fit'
+    | '/api/grade-essay'
     | '/api/ingest'
     | '/api/match'
     | '/api/personality'
+    | '/api/plan'
+    | '/api/profile'
     | '/api/rerank'
     | '/api/retrieve'
+    | '/api/rubric'
     | '/scholarship/$id'
     | '/api/admin/telemetry'
     | '/api/scholarship/$id'
-    | '/demo/api/names'
-    | '/demo/start/api-request'
-    | '/demo/start/server-funcs'
-    | '/demo/start/ssr/data-only'
-    | '/demo/start/ssr/full-ssr'
-    | '/demo/start/ssr/spa-mode'
-    | '/demo/start/ssr/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -312,21 +288,19 @@ export interface RootRouteChildren {
   ApiClaudeHealthRoute: typeof ApiClaudeHealthRoute
   ApiDbHealthRoute: typeof ApiDbHealthRoute
   ApiDraftRoute: typeof ApiDraftRoute
+  ApiExplainFitRoute: typeof ApiExplainFitRoute
+  ApiGradeEssayRoute: typeof ApiGradeEssayRoute
   ApiIngestRoute: typeof ApiIngestRoute
   ApiMatchRoute: typeof ApiMatchRoute
   ApiPersonalityRoute: typeof ApiPersonalityRoute
+  ApiPlanRoute: typeof ApiPlanRoute
+  ApiProfileRoute: typeof ApiProfileRoute
   ApiRerankRoute: typeof ApiRerankRoute
   ApiRetrieveRoute: typeof ApiRetrieveRoute
+  ApiRubricRoute: typeof ApiRubricRoute
   ScholarshipIdRoute: typeof ScholarshipIdRoute
   ApiAdminTelemetryRoute: typeof ApiAdminTelemetryRoute
   ApiScholarshipIdRoute: typeof ApiScholarshipIdRoute
-  DemoApiNamesRoute: typeof DemoApiNamesRoute
-  DemoStartApiRequestRoute: typeof DemoStartApiRequestRoute
-  DemoStartServerFuncsRoute: typeof DemoStartServerFuncsRoute
-  DemoStartSsrDataOnlyRoute: typeof DemoStartSsrDataOnlyRoute
-  DemoStartSsrFullSsrRoute: typeof DemoStartSsrFullSsrRoute
-  DemoStartSsrSpaModeRoute: typeof DemoStartSsrSpaModeRoute
-  DemoStartSsrIndexRoute: typeof DemoStartSsrIndexRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -366,6 +340,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ScholarshipIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/rubric': {
+      id: '/api/rubric'
+      path: '/api/rubric'
+      fullPath: '/api/rubric'
+      preLoaderRoute: typeof ApiRubricRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/retrieve': {
       id: '/api/retrieve'
       path: '/api/retrieve'
@@ -378,6 +359,20 @@ declare module '@tanstack/react-router' {
       path: '/api/rerank'
       fullPath: '/api/rerank'
       preLoaderRoute: typeof ApiRerankRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/profile': {
+      id: '/api/profile'
+      path: '/api/profile'
+      fullPath: '/api/profile'
+      preLoaderRoute: typeof ApiProfileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/plan': {
+      id: '/api/plan'
+      path: '/api/plan'
+      fullPath: '/api/plan'
+      preLoaderRoute: typeof ApiPlanRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/personality': {
@@ -399,6 +394,20 @@ declare module '@tanstack/react-router' {
       path: '/api/ingest'
       fullPath: '/api/ingest'
       preLoaderRoute: typeof ApiIngestRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/grade-essay': {
+      id: '/api/grade-essay'
+      path: '/api/grade-essay'
+      fullPath: '/api/grade-essay'
+      preLoaderRoute: typeof ApiGradeEssayRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/explain-fit': {
+      id: '/api/explain-fit'
+      path: '/api/explain-fit'
+      fullPath: '/api/explain-fit'
+      preLoaderRoute: typeof ApiExplainFitRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/draft': {
@@ -429,27 +438,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof AdminDebugRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/demo/start/server-funcs': {
-      id: '/demo/start/server-funcs'
-      path: '/demo/start/server-funcs'
-      fullPath: '/demo/start/server-funcs'
-      preLoaderRoute: typeof DemoStartServerFuncsRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/demo/start/api-request': {
-      id: '/demo/start/api-request'
-      path: '/demo/start/api-request'
-      fullPath: '/demo/start/api-request'
-      preLoaderRoute: typeof DemoStartApiRequestRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/demo/api/names': {
-      id: '/demo/api/names'
-      path: '/demo/api/names'
-      fullPath: '/demo/api/names'
-      preLoaderRoute: typeof DemoApiNamesRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/api/scholarship/$id': {
       id: '/api/scholarship/$id'
       path: '/api/scholarship/$id'
@@ -464,34 +452,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminTelemetryRouteImport
       parentRoute: typeof rootRouteImport
     }
-    '/demo/start/ssr/': {
-      id: '/demo/start/ssr/'
-      path: '/demo/start/ssr'
-      fullPath: '/demo/start/ssr'
-      preLoaderRoute: typeof DemoStartSsrIndexRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/demo/start/ssr/spa-mode': {
-      id: '/demo/start/ssr/spa-mode'
-      path: '/demo/start/ssr/spa-mode'
-      fullPath: '/demo/start/ssr/spa-mode'
-      preLoaderRoute: typeof DemoStartSsrSpaModeRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/demo/start/ssr/full-ssr': {
-      id: '/demo/start/ssr/full-ssr'
-      path: '/demo/start/ssr/full-ssr'
-      fullPath: '/demo/start/ssr/full-ssr'
-      preLoaderRoute: typeof DemoStartSsrFullSsrRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/demo/start/ssr/data-only': {
-      id: '/demo/start/ssr/data-only'
-      path: '/demo/start/ssr/data-only'
-      fullPath: '/demo/start/ssr/data-only'
-      preLoaderRoute: typeof DemoStartSsrDataOnlyRouteImport
-      parentRoute: typeof rootRouteImport
-    }
   }
 }
 
@@ -504,21 +464,19 @@ const rootRouteChildren: RootRouteChildren = {
   ApiClaudeHealthRoute: ApiClaudeHealthRoute,
   ApiDbHealthRoute: ApiDbHealthRoute,
   ApiDraftRoute: ApiDraftRoute,
+  ApiExplainFitRoute: ApiExplainFitRoute,
+  ApiGradeEssayRoute: ApiGradeEssayRoute,
   ApiIngestRoute: ApiIngestRoute,
   ApiMatchRoute: ApiMatchRoute,
   ApiPersonalityRoute: ApiPersonalityRoute,
+  ApiPlanRoute: ApiPlanRoute,
+  ApiProfileRoute: ApiProfileRoute,
   ApiRerankRoute: ApiRerankRoute,
   ApiRetrieveRoute: ApiRetrieveRoute,
+  ApiRubricRoute: ApiRubricRoute,
   ScholarshipIdRoute: ScholarshipIdRoute,
   ApiAdminTelemetryRoute: ApiAdminTelemetryRoute,
   ApiScholarshipIdRoute: ApiScholarshipIdRoute,
-  DemoApiNamesRoute: DemoApiNamesRoute,
-  DemoStartApiRequestRoute: DemoStartApiRequestRoute,
-  DemoStartServerFuncsRoute: DemoStartServerFuncsRoute,
-  DemoStartSsrDataOnlyRoute: DemoStartSsrDataOnlyRoute,
-  DemoStartSsrFullSsrRoute: DemoStartSsrFullSsrRoute,
-  DemoStartSsrSpaModeRoute: DemoStartSsrSpaModeRoute,
-  DemoStartSsrIndexRoute: DemoStartSsrIndexRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

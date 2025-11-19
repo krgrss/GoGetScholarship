@@ -1,7 +1,7 @@
 import { Link } from '@tanstack/react-router'
 
 import * as React from 'react'
-import { Activity, Home, Menu, MoonStar, Network, SunMedium, X } from 'lucide-react'
+import { Activity, Home, Menu, MoonStar, Network, SunMedium, User, X } from 'lucide-react'
 
 export default function Header() {
   const [isOpen, setIsOpen] = React.useState(false)
@@ -66,9 +66,26 @@ export default function Header() {
             >
               Dashboard
             </Link>
+            <Link
+              to="/profile"
+              className="transition hover:text-foreground"
+              activeProps={{
+                className:
+                  'text-foreground underline decoration-primary/60 underline-offset-4',
+              }}
+            >
+              Profile
+            </Link>
           </nav>
 
           <div className="flex items-center gap-3">
+            <Link
+              to="/profile"
+              className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+            >
+              <User className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Profile</span>
+            </Link>
             <Link
               to="/admin/debug"
               className="hidden items-center gap-1 text-xs font-medium text-muted-foreground transition hover:text-foreground sm:inline-flex"
@@ -137,6 +154,19 @@ export default function Header() {
           >
             <Home size={20} />
             <span className="font-medium">Dashboard</span>
+          </Link>
+
+          <Link
+            to="/profile"
+            onClick={() => setIsOpen(false)}
+            className="mb-2 flex items-center gap-3 rounded-lg p-3 text-sm text-muted-foreground transition hover:bg-muted"
+            activeProps={{
+              className:
+                'mb-2 flex items-center gap-3 rounded-lg bg-primary text-primary-foreground p-3 text-sm transition hover:bg-primary/90',
+            }}
+          >
+            <User size={20} />
+            <span className="font-medium">Profile</span>
           </Link>
 
           <Link

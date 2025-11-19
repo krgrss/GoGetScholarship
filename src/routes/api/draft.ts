@@ -47,6 +47,17 @@ const DraftIn = z.object({
   scholarship_name: z.string(),
   scholarship_text: z.string().max(60_000).optional().default(''),
   personality: Personality, // output from /api/personality
+  rubric: z
+    .array(
+      z.object({
+        id: z.string(),
+        name: z.string(),
+        description: z.string().optional(),
+        weight: z.number().optional(),
+      }),
+    )
+    .optional()
+    .default([]),
   scholarship_id: z.string().uuid().optional(),
   student_id: z.string().uuid().optional(),
   student_profile: z.object({
@@ -97,6 +108,7 @@ export const Route = createFileRoute('/api/draft')({
           kind: 'draft-api',
           scholarship_name: input.scholarship_name,
           personality: input.personality,
+          rubric: input.rubric,
           student_profile: input.student_profile,
           word_target: input.word_target,
           style: input.style ?? null,
@@ -129,6 +141,9 @@ Personality:
 - Tone: ${input.style ?? input.personality.tone}
 - Constraints: ${(input.personality.constraints ?? []).join('; ')}
 
+Rubric (criteria and weights, if provided):
+${JSON.stringify(input.rubric, null, 2)}
+
 Student profile (facts only):
 ${JSON.stringify(input.student_profile, null, 2)}
 
@@ -148,6 +163,7 @@ Return EXACTLY this JSON:
 Rules:
 - Lead with the strongest signals implied by weights (e.g., GPA/projects if high).
 - Reframe the SAME stories differently if tone/themes suggest it.
+- When rubric is provided, make sure the draft clearly addresses the highest-weight criteria.
 - Respect constraints (e.g., min GPA, country) and flag mismatches in missing_info_flags.
 - No bullet spam in the draft; write in paragraphs.
 `.trim()

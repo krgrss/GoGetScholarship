@@ -1,16 +1,16 @@
 {
-  "servers": {
+  "mcpServers": {
     "shadcn": {
-      "command": "npx",
-      "args": ["shadcn@latest", "mcp"]
+      "command": "pnpm",
+      "args": ["dlx", "shadcn@latest", "mcp"]
     },
     "reactbits": {
-      "command": "npx",
-      "args": ["reactbits-dev-mcp-server"]
+      "command": "pnpm",
+      "args": ["dlx", "reactbits-dev-mcp-server"]
     },
     "magicui": {
-      "command": "npx",
-      "args": ["-y", "@magicuidesign/mcp@latest"]
+      "command": "pnpm",
+      "args": ["dlx", "@magicuidesign/mcp@latest"]
     }
   }
 }

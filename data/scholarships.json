@@ -5070,6 +5070,727 @@
          }
       },
       {
+         "id": "google-wtm-usca-undergradgrad-2025",
+         "name": "Women Techmakers Scholars Program (US & Canada)",
+         "provider_name": "Google",
+         "provider_type": "corporate",
+         "url": "https://www.womentechmakers.com/scholars",
+         "application_url": "https://www.womentechmakers.com/scholars",
+
+         "source_country": "US",
+         "country_eligibility": ["US", "CA"],
+         "level_of_study": ["undergrad", "grad"],
+         "fields_of_study": ["computer_science", "computer_engineering", "technology"],
+         "citizenship_requirements": ["none_specified"],
+         "demographic_eligibility": ["women"],
+         "is_international_students_allowed": true,
+         "financial_need_required": false,
+
+         "min_gpa": null,
+         "gpa_scale": null,
+
+         "deadline": "2025-12-01",
+         "deadline_note": "Deadline typically in early December; placeholder date for dataset – confirm each cycle.",
+         "frequency": "annual",
+         "amount_min": 5000,
+         "amount_max": 10000,
+         "currency": "USD",
+         "num_awards": 20,
+         "is_renewable": false,
+
+         "description_raw": "Women Techmakers Scholars Program, formerly the Google Anita Borg Memorial Scholarship, supports women in computer science and related technical fields with a one-time scholarship plus community and professional development opportunities.",
+         "eligibility_raw": "Applicants must identify as female; be enrolled or intending to enroll full-time in a Bachelor’s, Master’s, or PhD program in computer science, computer engineering, or a closely related technical field at an accredited university in the United States or Canada; demonstrate strong academic performance and leadership, and show passion for increasing the involvement of women in technology.",
+
+         "essay_required": true,
+         "essay_prompts_raw": [
+            "Describe your contributions to supporting women in technology and how this scholarship will help you further that impact.",
+            "Share a challenge you faced in your academic or personal journey and how you demonstrated resilience and leadership."
+         ],
+         "essay_prompts": [],
+
+         "application_components": {
+            "essays": 2,
+            "reference_letters": 1,
+            "transcript_required": true,
+            "resume_required": true,
+            "portfolio_required": false,
+            "interview_possible": true
+         },
+         "application_effort": "high",
+
+         "personality_profile": {
+            "weights": {
+            "academics": 0.3,
+            "leadership": 0.35,
+            "community": 0.2,
+            "financial_need": 0.05,
+            "research": 0.05,
+            "extracurriculars": 0.05,
+            "background": 0.0,
+            "innovation": 0.0
+            },
+            "themes": [
+            "advancing women in tech",
+            "technical excellence",
+            "community leadership"
+            ],
+            "tone": {
+            "style": "inspirational",
+            "voice": "achievement-focused",
+            "keywords": [
+               "impact",
+               "equity in tech",
+               "role model",
+               "leadership"
+            ]
+            },
+            "constraints": {
+            "must_study_in_country": "US_or_CA",
+            "min_gpa": null
+            }
+         },
+
+         "last_verified_at": "2025-02-01T18:30:00Z",
+         "source": {
+            "page_url": "https://www.womentechmakers.com/scholars",
+            "found_via": "university funding pages describing Women Techmakers Scholars Program",
+            "notes": "Award size ($10k USD / $5k CAD) and female CS/tech focus taken from university funding descriptions and program summaries. Essays and exact number of letters approximated for dataset; confirm via current application guidelines."
+         }
+      },
+
+      {
+         "id": "google-lime-usca-undergrad-2025",
+         "name": "Google Lime Scholarship for Students with Disabilities",
+         "provider_name": "Google & Lime Connect",
+         "provider_type": "corporate",
+         "url": "https://limeconnect.com/opportunities/scholarships-awards/",
+         "application_url": "https://limeconnect.com/opportunities/scholarships-awards/",
+
+         "source_country": "US",
+         "country_eligibility": ["US", "CA"],
+         "level_of_study": ["undergrad"],
+         "fields_of_study": ["computer_science", "computer_engineering", "related_technical"],
+         "citizenship_requirements": ["none_specified"],
+         "demographic_eligibility": ["disabled_students"],
+         "is_international_students_allowed": true,
+         "financial_need_required": false,
+
+         "min_gpa": null,
+         "gpa_scale": null,
+
+         "deadline": "2025-04-15",
+         "deadline_note": "Typically closes in April; placeholder date for dataset – confirm on Lime Connect or Google.",
+         "frequency": "annual",
+         "amount_min": 10000,
+         "amount_max": 10000,
+         "currency": "USD",
+         "num_awards": null,
+         "is_renewable": false,
+
+         "description_raw": "The Google Lime Scholarship supports undergraduate students with visible or invisible disabilities who are pursuing degrees in computer science, computer engineering, or closely related technical fields and who demonstrate academic excellence and passion for technology.",
+         "eligibility_raw": "Applicants must have, or consider themselves to have, a visible or invisible disability; be currently enrolled as full-time undergraduate students in the U.S. or Canada, and intend to be enrolled full-time in a Bachelor’s program in computer science, computer engineering, or a closely related technical field in the coming academic year; demonstrate a strong academic record and leadership in computer science and technology.",
+
+         "essay_required": true,
+         "essay_prompts_raw": [
+            "Explain how your disability experience has shaped your journey in technology and your goals in computer science.",
+            "Describe a project, initiative, or experience that shows your passion for computer science and your impact on others."
+         ],
+         "essay_prompts": [],
+
+         "application_components": {
+            "essays": 2,
+            "reference_letters": 1,
+            "transcript_required": true,
+            "resume_required": true,
+            "portfolio_required": false,
+            "interview_possible": true
+         },
+         "application_effort": "high",
+
+         "personality_profile": {
+            "weights": {
+            "academics": 0.25,
+            "leadership": 0.3,
+            "community": 0.25,
+            "financial_need": 0.0,
+            "research": 0.05,
+            "extracurriculars": 0.1,
+            "background": 0.05,
+            "innovation": 0.0
+            },
+            "themes": [
+            "disability inclusion in tech",
+            "resilience",
+            "technical passion"
+            ],
+            "tone": {
+            "style": "inspirational",
+            "voice": "story-driven",
+            "keywords": [
+               "resilience",
+               "accessibility",
+               "advocacy",
+               "technical curiosity"
+            ]
+            },
+            "constraints": {
+            "must_study_in_country": "US_or_CA",
+            "min_gpa": null
+            }
+         },
+
+         "last_verified_at": "2025-02-06T18:30:00Z",
+         "source": {
+            "page_url": "https://www.google.com/edu/scholarships/the-google-lime-scholarship/",
+            "found_via": "MALDEF & university scholarship guides summarizing Google Lime Scholarship",
+            "notes": "Eligibility (disability, CS/CE, US/Canada) and award value (~$10,000) taken from scholarship resource guides. Essay structure approximated for dataset."
+         }
+      },
+
+      {
+         "id": "point-flagship-us-undergradgrad-2025",
+         "name": "Point Foundation Flagship Scholarship",
+         "provider_name": "Point Foundation",
+         "provider_type": "nonprofit",
+         "url": "https://pointfoundation.org/flagship",
+         "application_url": "https://pointfoundation.org/flagship",
+
+         "source_country": "US",
+         "country_eligibility": ["US"],
+         "level_of_study": ["undergrad", "grad"],
+         "fields_of_study": ["any"],
+         "citizenship_requirements": ["us_citizen_or_permanent_resident", "daca_or_undocumented"],
+         "demographic_eligibility": ["lgbtq"],
+         "is_international_students_allowed": false,
+         "financial_need_required": true,
+
+         "min_gpa": 3.3,
+         "gpa_scale": 4.0,
+
+         "deadline": "2025-01-31",
+         "deadline_note": "Flagship Scholarship deadlines typically fall in January; placeholder date – confirm each year.",
+         "frequency": "annual",
+         "amount_min": null,
+         "amount_max": null,
+         "currency": "USD",
+         "num_awards": null,
+         "is_renewable": true,
+
+         "description_raw": "The Point Flagship Scholarship is the flagship program of Point Foundation, providing financial support, mentoring, leadership development and community-building opportunities to LGBTQ+ students pursuing undergraduate or graduate degrees in the United States.",
+         "eligibility_raw": "Applicants must identify as LGBTQ+; be enrolled or intending to enroll in an accredited U.S. institution; demonstrate academic achievement (typically minimum 3.3 GPA), proven leadership, and significant involvement in LGBTQ+ or social justice causes, and show financial need.",
+
+         "essay_required": true,
+         "essay_prompts_raw": [
+            "Describe your journey as an LGBTQ+ person and how it has shaped your goals, leadership, and commitment to community.",
+            "Explain how you plan to use your education to create positive change for LGBTQ+ communities or other marginalized groups."
+         ],
+         "essay_prompts": [],
+
+         "application_components": {
+            "essays": 3,
+            "reference_letters": 2,
+            "transcript_required": true,
+            "resume_required": true,
+            "portfolio_required": false,
+            "interview_possible": true
+         },
+         "application_effort": "high",
+
+         "personality_profile": {
+            "weights": {
+            "academics": 0.25,
+            "leadership": 0.35,
+            "community": 0.3,
+            "financial_need": 0.1,
+            "research": 0.0,
+            "extracurriculars": 0.0,
+            "background": 0.0,
+            "innovation": 0.0
+            },
+            "themes": [
+            "LGBTQ+ advocacy",
+            "social justice",
+            "intersectional leadership"
+            ],
+            "tone": {
+            "style": "reflective",
+            "voice": "story-driven",
+            "keywords": [
+               "identity",
+               "community impact",
+               "advocacy",
+               "resilience"
+            ]
+            },
+            "constraints": {
+            "must_study_in_country": "US",
+            "min_gpa": 3.3
+            }
+         },
+
+         "last_verified_at": "2025-02-01T18:30:00Z",
+         "source": {
+            "page_url": "https://pointfoundation.org/flagship",
+            "found_via": "Point Foundation site and press coverage describing flagship LGBTQ+ scholarship",
+            "notes": "Point describes itself as the largest LGBTQ+ scholarship provider in the US; program includes financial support, mentorship, and leadership training. Amount range and essay details approximated for demo; verify in current cycle."
+         }
+      },
+
+      {
+         "id": "mikerowe-works-us-trades-2026",
+         "name": "Mike Rowe WORKS Work Ethic Scholarship",
+         "provider_name": "mikeroweWORKS Foundation",
+         "provider_type": "foundation",
+         "url": "https://mikeroweworks.org/scholarship/",
+         "application_url": "https://mikeroweworks.org/scholarship/",
+
+         "source_country": "US",
+         "country_eligibility": ["US"],
+         "level_of_study": ["vocational", "undergrad"],
+         "fields_of_study": ["skilled_trades", "technical_programs"],
+         "citizenship_requirements": ["us_citizen_or_permanent_resident"],
+         "demographic_eligibility": ["none_specified"],
+         "is_international_students_allowed": false,
+         "financial_need_required": false,
+
+         "min_gpa": null,
+         "gpa_scale": null,
+
+         "deadline": "2026-04-17",
+         "deadline_note": "Recent cycles list mid-April deadlines (e.g., April 17); update each year from program guidelines.",
+         "frequency": "annual",
+         "amount_min": 500,
+         "amount_max": 20000,
+         "currency": "USD",
+         "num_awards": null,
+         "is_renewable": false,
+
+         "description_raw": "The Work Ethic Scholarship Program supports students pursuing training in skilled trades, emphasizing strong work ethic, personal responsibility, and commitment to hands-on careers. The foundation awards millions of dollars in scholarships each year for approved trade programs.",
+         "eligibility_raw": "Applicants must plan to enroll in an approved trade or technical program in the United States; sign the S.W.E.A.T. Pledge; demonstrate a strong work ethic and commitment to a career in the skilled trades; and complete a multi-step application including written responses, references, and documentation of program costs.",
+
+         "essay_required": true,
+         "essay_prompts_raw": [
+            "Answer four questions reflecting on the S.W.E.A.T. Pledge and how its principles show up in your life and work.",
+            "Explain why you chose your trade and how you plan to use your skills to contribute to your community."
+         ],
+         "essay_prompts": [],
+
+         "application_components": {
+            "essays": 4,
+            "reference_letters": 2,
+            "transcript_required": true,
+            "resume_required": false,
+            "portfolio_required": false,
+            "interview_possible": false
+         },
+         "application_effort": "very_high",
+
+         "personality_profile": {
+            "weights": {
+            "academics": 0.1,
+            "leadership": 0.25,
+            "community": 0.2,
+            "financial_need": 0.15,
+            "research": 0.0,
+            "extracurriculars": 0.1,
+            "background": 0.2,
+            "innovation": 0.0
+            },
+            "themes": [
+            "work ethic",
+            "personal responsibility",
+            "respect for skilled labor"
+            ],
+            "tone": {
+            "style": "direct",
+            "voice": "practical",
+            "keywords": [
+               "work ethic",
+               "show up early",
+               "hands-on",
+               "no excuses"
+            ]
+            },
+            "constraints": {
+            "must_study_in_country": "US",
+            "min_gpa": null
+            }
+         },
+
+         "last_verified_at": "2025-02-06T18:30:00Z",
+         "source": {
+            "page_url": "https://mikeroweworks.org/scholarship/",
+            "found_via": "Scholarship aggregators summarizing Mike Rowe Work Ethic Scholarship and official MRW site",
+            "notes": "Scholarship description, trade focus, multi-step process, and award ceiling (~$20,000) from official foundation info and scholarship summaries. Exact per-student amount and number of awards vary annually."
+         }
+      },
+
+      {
+         "id": "youngarts-us-arts-2026",
+         "name": "YoungArts National Arts Competition",
+         "provider_name": "National Foundation for Advancement in the Arts (YoungArts)",
+         "provider_type": "nonprofit",
+         "url": "https://youngarts.org",
+         "application_url": "https://youngarts.org/apply",
+
+         "source_country": "US",
+         "country_eligibility": ["US"],
+         "level_of_study": ["high_school"],
+         "fields_of_study": ["visual_arts", "performing_arts", "writing"],
+         "citizenship_requirements": ["us_citizen_or_permanent_resident", "authorized_to_work_in_us"],
+         "demographic_eligibility": ["none_specified"],
+         "is_international_students_allowed": false,
+         "financial_need_required": false,
+
+         "min_gpa": null,
+         "gpa_scale": null,
+
+         "deadline": "2026-10-17",
+         "deadline_note": "Recent competition deadlines fall in October (e.g., Oct 17); confirm exact date each year.",
+         "frequency": "annual",
+         "amount_min": 250,
+         "amount_max": 10000,
+         "currency": "USD",
+         "num_awards": null,
+         "is_renewable": false,
+
+         "description_raw": "YoungArts is a national arts competition that identifies and supports young artists in the United States, providing cash awards, mentorship, and national recognition. Awards range from modest prizes to up to $10,000 for top winners.",
+         "eligibility_raw": "Applicants must be U.S. citizens or permanent residents (or otherwise legally authorized to receive income in the U.S.), in grades 10–12 or aged 15–18 at the time of application, and submit high-quality work in eligible artistic disciplines. Selection is based primarily on artistic merit rather than GPA or financial need.",
+
+         "essay_required": false,
+         "essay_prompts_raw": [],
+         "essay_prompts": [],
+
+         "application_components": {
+            "essays": 0,
+            "reference_letters": 0,
+            "transcript_required": false,
+            "resume_required": false,
+            "portfolio_required": true,
+            "interview_possible": true
+         },
+         "application_effort": "high",
+
+         "personality_profile": {
+            "weights": {
+            "academics": 0.05,
+            "leadership": 0.1,
+            "community": 0.1,
+            "financial_need": 0.0,
+            "research": 0.0,
+            "extracurriculars": 0.15,
+            "background": 0.1,
+            "innovation": 0.5
+            },
+            "themes": [
+            "artistic excellence",
+            "creative risk-taking",
+            "early talent recognition"
+            ],
+            "tone": {
+            "style": "expressive",
+            "voice": "artistic",
+            "keywords": [
+               "artistic vision",
+               "originality",
+               "expression",
+               "creative practice"
+            ]
+            },
+            "constraints": {
+            "must_study_in_country": "US",
+            "min_gpa": null
+            }
+         },
+
+         "last_verified_at": "2025-02-06T18:30:00Z",
+         "source": {
+            "page_url": "https://youngarts.org",
+            "found_via": "Scholarships.com YoungArts National Arts Competition listing and YoungArts site",
+            "notes": "Award range ($250–$10,000) and eligibility (grades 10–12 or age 15–18, U.S. citizenship/PR/authorized to work) from scholarship listing. Program is primarily portfolio-based; no traditional essay prompt required."
+         }
+      },
+
+      {
+         "id": "aauw-selected-professions-us-grad-2026",
+         "name": "AAUW Selected Professions Fellowship",
+         "provider_name": "American Association of University Women (AAUW)",
+         "provider_type": "foundation",
+         "url": "https://www.aauw.org/resources/programs/fellowships-grants/funding-opportunities/selected-professions-fellowship-program/",
+         "application_url": "https://www.aauw.org/resources/programs/fellowships-grants/funding-opportunities/selected-professions-fellowship-program/",
+
+         "source_country": "US",
+         "country_eligibility": ["US"],
+         "level_of_study": ["grad", "professional"],
+         "fields_of_study": [
+            "architecture",
+            "natural_and_physical_sciences",
+            "technology",
+            "engineering",
+            "mathematics",
+            "medicine"
+         ],
+         "citizenship_requirements": ["us_citizen_or_permanent_resident"],
+         "demographic_eligibility": ["women"],
+         "is_international_students_allowed": false,
+         "financial_need_required": false,
+
+         "min_gpa": null,
+         "gpa_scale": null,
+
+         "deadline": "2025-10-07",
+         "deadline_note": "Recent AAUW cycle lists early October deadlines (e.g., Oct 7); confirm in each call.",
+         "frequency": "annual",
+         "amount_min": 20000,
+         "amount_max": 20000,
+         "currency": "USD",
+         "num_awards": null,
+         "is_renewable": false,
+
+         "description_raw": "AAUW Selected Professions Fellowships provide $20,000 fellowships to women pursuing their first full-time master’s or professional degrees in fields where women have historically been underrepresented, especially in STEM and certain professional disciplines.",
+         "eligibility_raw": "Applicants must identify as women; be U.S. citizens or permanent residents; be pursuing a first full-time master’s or professional degree in an eligible field such as architecture, natural and physical sciences, technology, engineering, mathematics, or medicine at an accredited institution; and demonstrate academic excellence, leadership, and a commitment to serving under-resourced communities or supporting women and girls.",
+
+         "essay_required": true,
+         "essay_prompts_raw": [
+            "Describe your academic and professional goals and how this fellowship will help you contribute to your field.",
+            "Explain your commitment to supporting women and girls or under-resourced communities through your work."
+         ],
+         "essay_prompts": [],
+
+         "application_components": {
+            "essays": 2,
+            "reference_letters": 2,
+            "transcript_required": true,
+            "resume_required": true,
+            "portfolio_required": false,
+            "interview_possible": false
+         },
+         "application_effort": "high",
+
+         "personality_profile": {
+            "weights": {
+            "academics": 0.35,
+            "leadership": 0.3,
+            "community": 0.25,
+            "financial_need": 0.05,
+            "research": 0.05,
+            "extracurriculars": 0.0,
+            "background": 0.0,
+            "innovation": 0.0
+            },
+            "themes": [
+            "women in underrepresented fields",
+            "professional impact",
+            "service to under-resourced communities"
+            ],
+            "tone": {
+            "style": "formal",
+            "voice": "impact-oriented",
+            "keywords": [
+               "professional practice",
+               "equity",
+               "service",
+               "role model"
+            ]
+            },
+            "constraints": {
+            "must_study_in_country": "US",
+            "min_gpa": null
+            }
+         },
+
+         "last_verified_at": "2025-02-06T18:30:00Z",
+         "source": {
+            "page_url": "https://www.aauw.org/resources/programs/fellowships-grants/funding-opportunities/selected-professions-fellowship-program/",
+            "found_via": "AAUW official fellowship page",
+            "notes": "$20,000 stipend, eligible fields, and citizenship requirements taken directly from AAUW. Essay structure approximated based on stated selection criteria (leadership, service, support for women and girls)."
+         }
+      },
+
+      {
+         "id": "daad-helmut-schmidt-de-masters-2026",
+         "name": "DAAD Helmut-Schmidt-Programme – Master’s Scholarships for Public Policy and Good Governance",
+         "provider_name": "German Academic Exchange Service (DAAD)",
+         "provider_type": "government",
+         "url": "https://www.daad.de/en/studying-in-germany/scholarships/daad-funding-programmes/helmut-schmidt-programme/",
+         "application_url": "https://www.daad.de/en/studying-in-germany/scholarships/daad-funding-programmes/helmut-schmidt-programme/",
+
+         "source_country": "DE",
+         "country_eligibility": ["developing_emerging_countries"],
+         "level_of_study": ["grad"],
+         "fields_of_study": [
+            "public_policy",
+            "public_administration",
+            "international_relations",
+            "development_studies",
+            "peace_and_conflict_studies",
+            "social_sciences",
+            "law",
+            "economics"
+         ],
+         "citizenship_requirements": ["citizen_of_oda_eligible_country"],
+         "demographic_eligibility": ["none_specified"],
+         "is_international_students_allowed": true,
+         "financial_need_required": false,
+
+         "min_gpa": null,
+         "gpa_scale": null,
+
+         "deadline": "2025-07-31",
+         "deadline_note": "Current calls list application windows June–July (e.g., until July 31); confirm in the specific call for the chosen cycle.",
+         "frequency": "annual",
+         "amount_min": null,
+         "amount_max": null,
+         "currency": "EUR",
+         "num_awards": null,
+         "is_renewable": false,
+
+         "description_raw": "The Helmut-Schmidt-Programme offers fully funded master’s scholarships in Germany for future leaders from developing and emerging countries in fields related to public policy, good governance, and development. Scholarships cover tuition, living expenses, travel, insurance, and a mandatory German language course.",
+         "eligibility_raw": "Applicants must hold a first university degree with above-average grades (usually in social and political sciences, law, economics, public policy, or administration); come from countries eligible for official development assistance; show a strong commitment to the social, political, and economic development of their home countries; and have relevant practical experience such as professional work, internships, or social/political engagement.",
+
+         "essay_required": true,
+         "essay_prompts_raw": [
+            "Explain your motivation for studying public policy, governance, or a related field in Germany and how this aligns with the goals of the Helmut-Schmidt-Programme.",
+            "Describe how you plan to contribute to good governance and social or economic development in your home country after your studies."
+         ],
+         "essay_prompts": [],
+
+         "application_components": {
+            "essays": 2,
+            "reference_letters": 2,
+            "transcript_required": true,
+            "resume_required": true,
+            "portfolio_required": false,
+            "interview_possible": true
+         },
+         "application_effort": "very_high",
+
+         "personality_profile": {
+            "weights": {
+            "academics": 0.35,
+            "leadership": 0.3,
+            "community": 0.2,
+            "financial_need": 0.05,
+            "research": 0.05,
+            "extracurriculars": 0.0,
+            "background": 0.05,
+            "innovation": 0.0
+            },
+            "themes": [
+            "good governance",
+            "public service leadership",
+            "development impact"
+            ],
+            "tone": {
+            "style": "formal",
+            "voice": "policy-focused",
+            "keywords": [
+               "governance",
+               "institution-building",
+               "equity",
+               "democratic development"
+            ]
+            },
+            "constraints": {
+            "must_study_in_country": "DE",
+            "min_gpa": null
+            }
+         },
+
+         "last_verified_at": "2025-02-06T18:30:00Z",
+         "source": {
+            "page_url": "https://www.daad.de/en/studying-in-germany/scholarships/daad-funding-programmes/helmut-schmidt-programme/",
+            "found_via": "DAAD official Helmut-Schmidt-Programme description and current call PDFs",
+            "notes": "Objectives, fully funded nature, fields of study, and target group (future leaders from developing/emerging countries) taken from DAAD. Award amounts vary by stipend and benefits rather than simple lump sum."
+         }
+      },
+
+      {
+         "id": "unhcr-dafi-global-undergrad-2026",
+         "name": "DAFI – Albert Einstein German Academic Refugee Initiative",
+         "provider_name": "UNHCR & Government of Germany (DAFI Programme)",
+         "provider_type": "multilateral",
+         "url": "https://www.unhcr.org/dafi-scholarships.html",
+         "application_url": "https://services.unhcr.org/opportunities/education-opportunities/albert-einstein-academic-refugee-initiative-dafi",
+
+         "source_country": "DE",
+         "country_eligibility": ["multiple_refugee_host_countries"],
+         "level_of_study": ["undergrad", "associate", "technical"],
+         "fields_of_study": ["any"],
+         "citizenship_requirements": ["refugee_or_asylum_seeker_in_host_country"],
+         "demographic_eligibility": ["refugees"],
+         "is_international_students_allowed": true,
+         "financial_need_required": true,
+
+         "min_gpa": null,
+         "gpa_scale": null,
+
+         "deadline": "2025-08-01",
+         "deadline_note": "Application periods vary by host country; many calls open mid-year. Date here is a placeholder; use country-specific call data.",
+         "frequency": "annual",
+         "amount_min": null,
+         "amount_max": null,
+         "currency": "varies",
+         "num_awards": null,
+         "is_renewable": true,
+
+         "description_raw": "The DAFI (Albert Einstein German Academic Refugee Initiative) scholarship programme offers qualified refugee and returnee students the possibility to earn undergraduate degrees or equivalent technical qualifications in their country of asylum or home country. It has supported tens of thousands of refugee students with tuition, stipends, and additional academic and psychosocial support.",
+         "eligibility_raw": "Applicants must be recognized refugees or asylum seekers in a participating host country; have completed secondary education and meet local university entry requirements; typically be below an upper age limit; and show academic potential and financial vulnerability. DAFI covers tuition, books, a monthly stipend, housing or housing allowance, local transportation, and sometimes health insurance and mentoring.",
+
+         "essay_required": false,
+         "essay_prompts_raw": [],
+         "essay_prompts": [],
+
+         "application_components": {
+            "essays": 0,
+            "reference_letters": 1,
+            "transcript_required": true,
+            "resume_required": false,
+            "portfolio_required": false,
+            "interview_possible": true
+         },
+         "application_effort": "medium",
+
+         "personality_profile": {
+            "weights": {
+            "academics": 0.25,
+            "leadership": 0.15,
+            "community": 0.25,
+            "financial_need": 0.25,
+            "research": 0.0,
+            "extracurriculars": 0.05,
+            "background": 0.05,
+            "innovation": 0.0
+            },
+            "themes": [
+            "refugee self-reliance",
+            "education as protection",
+            "community leadership"
+            ],
+            "tone": {
+            "style": "hopeful",
+            "voice": "resilience-focused",
+            "keywords": [
+               "self-reliance",
+               "opportunity",
+               "rebuilding",
+               "leadership"
+            ]
+            },
+            "constraints": {
+            "must_study_in_country": "host_country",
+            "min_gpa": null
+            }
+         },
+
+         "last_verified_at": "2025-02-06T18:30:00Z",
+         "source": {
+            "page_url": "https://www.unhcr.org/dafi-scholarships.html",
+            "found_via": "UNHCR DAFI programme pages and global report",
+            "notes": "DAFI is multi-country with varying local rules. Description and coverage (tuition, stipend, housing, transport, health, mentoring) taken from UNHCR opportunity and FAQ pages. This record is intentionally generic for demo; for production, create per-country records with specific details."
+         }
+      },
+      {
          "id":"alberta-student-number-one-ug-2024",
          "name":"Jason Lang Scholarship (Alberta)",
          "provider_name":"Government of Alberta",
@@ -5445,5 +6166,6 @@
             "notes":"Exclusively PhD level, included as a high-value, Canadian government international program. Meets the 30% exception rule."
          }
       }
+      
    ]
 }

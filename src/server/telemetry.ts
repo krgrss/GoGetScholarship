@@ -9,6 +9,8 @@ export type TelemetryStep =
   | 'rerank'
   | 'draft'
   | 'personality'
+  | 'explain-fit'
+  | 'grade'
   | 'pipeline'
 
 export type TelemetryEvent = {

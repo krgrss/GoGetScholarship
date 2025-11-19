@@ -18,6 +18,13 @@ type MatchBody = {
   min_gpa?: number
   k?: number
   use_reranker?: boolean
+  eligibility?: {
+    country?: string
+    level_of_study?: string
+    fields_of_study?: string[]
+    citizenship?: string
+    has_financial_need?: boolean
+  }
 }
 
 export const Route = createFileRoute('/api/match')({
@@ -29,11 +36,23 @@ export const Route = createFileRoute('/api/match')({
         if (!rl.ok) return rl.res
 
         const body = (await request.json()) as MatchBody
+
+        const eligibility = body.eligibility
+          ? {
+              country: body.eligibility.country,
+              levelOfStudy: body.eligibility.level_of_study,
+              fieldsOfStudy: body.eligibility.fields_of_study,
+              citizenship: body.eligibility.citizenship,
+              hasFinancialNeed: body.eligibility.has_financial_need,
+            }
+          : undefined
+
         const res = await runMatchWorkflow({
           studentSummary: body.student_summary,
           minGpa: body.min_gpa,
           k: body.k,
           useReranker: body.use_reranker ?? true,
+          eligibility,
         })
 
         const status = res.ok ? 200 : 400

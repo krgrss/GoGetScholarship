@@ -107,8 +107,68 @@ COMMENT ON COLUMN drafts.content IS 'Essay content';
 COMMENT ON COLUMN drafts.explanation IS 'Model explanation/rationale for structure';
 COMMENT ON COLUMN drafts.created_at IS 'Creation timestamp';
 
+-- Applications: a student planning or working on a specific scholarship
+CREATE TABLE applications (
+  id              uuid PRIMARY KEY,
+  student_id      uuid NOT NULL REFERENCES students(id) ON DELETE CASCADE,
+  scholarship_id  uuid NOT NULL REFERENCES scholarships(id) ON DELETE CASCADE,
+  status          text NOT NULL,
+  created_at      timestamptz DEFAULT now(),
+  updated_at      timestamptz DEFAULT now()
+);
+
+COMMENT ON TABLE applications IS 'Student applications for specific scholarships';
+COMMENT ON COLUMN applications.id IS 'Primary key (UUID)';
+COMMENT ON COLUMN applications.student_id IS 'FK to students.id';
+COMMENT ON COLUMN applications.scholarship_id IS 'FK to scholarships.id';
+COMMENT ON COLUMN applications.status IS 'Application status (e.g., planned | in_progress | submitted)';
+COMMENT ON COLUMN applications.created_at IS 'Creation timestamp';
+COMMENT ON COLUMN applications.updated_at IS 'Last update timestamp';
+
+-- Application plans: high-level plan per application
+CREATE TABLE application_plans (
+  id              uuid PRIMARY KEY,
+  application_id  uuid NOT NULL REFERENCES applications(id) ON DELETE CASCADE,
+  created_at      timestamptz DEFAULT now()
+);
+
+COMMENT ON TABLE application_plans IS 'Per-application checklist plan';
+COMMENT ON COLUMN application_plans.id IS 'Primary key (UUID)';
+COMMENT ON COLUMN application_plans.application_id IS 'FK to applications.id';
+COMMENT ON COLUMN application_plans.created_at IS 'Creation timestamp';
+
+-- Application tasks: concrete tasks (draft essay, request transcript, etc.)
+CREATE TABLE application_tasks (
+  id              uuid PRIMARY KEY,
+  plan_id         uuid NOT NULL REFERENCES application_plans(id) ON DELETE CASCADE,
+  label           text NOT NULL,
+  due_date        date,
+  completed       boolean DEFAULT false,
+  created_at      timestamptz DEFAULT now()
+);
+
+COMMENT ON TABLE application_tasks IS 'Tasks within an application plan';
+COMMENT ON COLUMN application_tasks.id IS 'Primary key (UUID)';
+COMMENT ON COLUMN application_tasks.plan_id IS 'FK to application_plans.id';
+COMMENT ON COLUMN application_tasks.label IS 'Human-readable task label';
+COMMENT ON COLUMN application_tasks.due_date IS 'Target due date (if known)';
+COMMENT ON COLUMN application_tasks.completed IS 'Whether the task is completed';
+COMMENT ON COLUMN application_tasks.created_at IS 'Creation timestamp';
+
 -- HNSW index (negative inner product / dot product). Use L2 ops if you prefer Euclidean.
 CREATE INDEX scholarship_embeddings_hnsw_ip
   ON scholarship_embeddings
   USING hnsw (embedding vector_ip_ops)
   WITH (m = 16, ef_construction = 200);
+
+-- Optional rubric JSON per scholarship (criteria and weights)
+CREATE TABLE scholarship_rubrics (
+  scholarship_id uuid PRIMARY KEY REFERENCES scholarships(id) ON DELETE CASCADE,
+  rubric jsonb NOT NULL,
+  updated_at timestamptz DEFAULT now()
+);
+
+COMMENT ON TABLE scholarship_rubrics IS 'Stored rubric criteria for a scholarship';
+COMMENT ON COLUMN scholarship_rubrics.scholarship_id IS 'FK to scholarships.id';
+COMMENT ON COLUMN scholarship_rubrics.rubric IS 'Rubric JSON (criteria with weights/labels)';
+COMMENT ON COLUMN scholarship_rubrics.updated_at IS 'Last update timestamp';
