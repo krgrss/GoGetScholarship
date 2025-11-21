@@ -78,3 +78,16 @@ Add a checkbox to capture 2–3 before/after essay pairs and log average improve
 - [ ] Sketch or stub LangGraph-style orchestrator functions (ExplainFitGraph, PlannerGraph, DraftEssayGraph, RubricCoachGraph) that wrap the existing APIs, even if they stay in-process for the hackathon.
 - [ ] Update `docs/system-architecture.md` and `docs/architecture_2.md` with any deviations between the original graph plan and the implemented API-based flows.
 
+## 14. Loading, Errors, and Accessibility (from `ux-requirements.md`)
+- [ ] Implement a global Toast system using shadcn (`Toast` provider + hooks) and route all success/error messages through it (matches, drafting, grading, profile save).
+- [ ] Add Skeleton states for core screens: matches list (cards), scholarship detail sections, and essay workspace (prompt + editor + sidebar) per `ux-requirements.md` §5.1.
+- [ ] Ensure AI failure cases (explain-fit, draft, grade) show calm, non-technical toasts and preserve user content, matching the examples in `ux-requirements.md` §5.2.
+- [ ] Do a focused accessibility pass: keyboard navigation order for filters/results/actions, ARIA labels on dialogs/sheets, and confirm color contrast meets WCAG AA for primary text and buttons.
+- [ ] On mobile, verify responsive behavior matches `ux-requirements.md` §5.5 (e.g., single-column layouts, filter sheet on matches, editor vs rubric tabs instead of side-by-side).
+
+## 15. API Surface & Routes (from `system-architecture.md` and `ui_3.pdf`)
+- [ ] Align existing routes with the planned API surface in `docs/system-architecture.md` (e.g., confirm or stub `/api/dashboard`, `/api/suggestions/low-extra-work`, `/api/scholarships/:id/plan`, essay grade/improve endpoints).
+- [ ] For the dashboard and planner UIs, decide which of the planned endpoints will be fully implemented vs mocked for the hackathon, and document that choice inline in `docs/system-architecture.md`.
+- [ ] Ensure the UX flows and CTAs on `/matches`, `/scholarship/$id`, and `/dashboard` map cleanly onto the API contracts (e.g., how we read/write applications, essays, reviews, and plans).
+- [ ] Review `docs/ui_3.pdf` mocks and adjust layout/styling on the main screens (`/matches`, `/scholarship/$id`, essay workspace, `/dashboard`) so the implemented UI closely matches the intended visual hierarchy and components.
+- [ ] Cross-check `docs/ux-requirements.md`, `docs/ui_3.pdf`, and `docs/system-architecture.md` after implementation and add a short “v1 implemented vs planned” note to `update/ai-rag.md` or `update/db.md` summarizing any intentional UX/architecture deviations.
