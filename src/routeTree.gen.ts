@@ -18,6 +18,7 @@ import { Route as ScholarshipIdRouteImport } from './routes/scholarship/$id'
 import { Route as EssayIdRouteImport } from './routes/essay/$id'
 import { Route as ApiRubricRouteImport } from './routes/api/rubric'
 import { Route as ApiRetrieveRouteImport } from './routes/api/retrieve'
+import { Route as ApiResearchRouteImport } from './routes/api/research'
 import { Route as ApiRerankRouteImport } from './routes/api/rerank'
 import { Route as ApiProfileRouteImport } from './routes/api/profile'
 import { Route as ApiPlanRouteImport } from './routes/api/plan'
@@ -26,8 +27,10 @@ import { Route as ApiMatchRouteImport } from './routes/api/match'
 import { Route as ApiIngestRouteImport } from './routes/api/ingest'
 import { Route as ApiGradeEssayRouteImport } from './routes/api/grade-essay'
 import { Route as ApiExplainFitRouteImport } from './routes/api/explain-fit'
+import { Route as ApiDraftsRouteImport } from './routes/api/drafts'
 import { Route as ApiDraftRouteImport } from './routes/api/draft'
 import { Route as ApiDbHealthRouteImport } from './routes/api/db-health'
+import { Route as ApiDashboardRouteImport } from './routes/api/dashboard'
 import { Route as ApiClaudeHealthRouteImport } from './routes/api/claude-health'
 import { Route as AdminDebugRouteImport } from './routes/admin/debug'
 import { Route as ApiScholarshipIdRouteImport } from './routes/api/scholarship/$id'
@@ -78,6 +81,11 @@ const ApiRetrieveRoute = ApiRetrieveRouteImport.update({
   path: '/api/retrieve',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiResearchRoute = ApiResearchRouteImport.update({
+  id: '/api/research',
+  path: '/api/research',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiRerankRoute = ApiRerankRouteImport.update({
   id: '/api/rerank',
   path: '/api/rerank',
@@ -118,6 +126,11 @@ const ApiExplainFitRoute = ApiExplainFitRouteImport.update({
   path: '/api/explain-fit',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiDraftsRoute = ApiDraftsRouteImport.update({
+  id: '/api/drafts',
+  path: '/api/drafts',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiDraftRoute = ApiDraftRouteImport.update({
   id: '/api/draft',
   path: '/api/draft',
@@ -126,6 +139,11 @@ const ApiDraftRoute = ApiDraftRouteImport.update({
 const ApiDbHealthRoute = ApiDbHealthRouteImport.update({
   id: '/api/db-health',
   path: '/api/db-health',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiDashboardRoute = ApiDashboardRouteImport.update({
+  id: '/api/dashboard',
+  path: '/api/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiClaudeHealthRoute = ApiClaudeHealthRouteImport.update({
@@ -157,8 +175,10 @@ export interface FileRoutesByFullPath {
   '/profile': typeof ProfileRoute
   '/admin/debug': typeof AdminDebugRoute
   '/api/claude-health': typeof ApiClaudeHealthRoute
+  '/api/dashboard': typeof ApiDashboardRoute
   '/api/db-health': typeof ApiDbHealthRoute
   '/api/draft': typeof ApiDraftRoute
+  '/api/drafts': typeof ApiDraftsRoute
   '/api/explain-fit': typeof ApiExplainFitRoute
   '/api/grade-essay': typeof ApiGradeEssayRoute
   '/api/ingest': typeof ApiIngestRoute
@@ -167,6 +187,7 @@ export interface FileRoutesByFullPath {
   '/api/plan': typeof ApiPlanRoute
   '/api/profile': typeof ApiProfileRoute
   '/api/rerank': typeof ApiRerankRoute
+  '/api/research': typeof ApiResearchRoute
   '/api/retrieve': typeof ApiRetrieveRoute
   '/api/rubric': typeof ApiRubricRoute
   '/essay/$id': typeof EssayIdRoute
@@ -182,8 +203,10 @@ export interface FileRoutesByTo {
   '/profile': typeof ProfileRoute
   '/admin/debug': typeof AdminDebugRoute
   '/api/claude-health': typeof ApiClaudeHealthRoute
+  '/api/dashboard': typeof ApiDashboardRoute
   '/api/db-health': typeof ApiDbHealthRoute
   '/api/draft': typeof ApiDraftRoute
+  '/api/drafts': typeof ApiDraftsRoute
   '/api/explain-fit': typeof ApiExplainFitRoute
   '/api/grade-essay': typeof ApiGradeEssayRoute
   '/api/ingest': typeof ApiIngestRoute
@@ -192,6 +215,7 @@ export interface FileRoutesByTo {
   '/api/plan': typeof ApiPlanRoute
   '/api/profile': typeof ApiProfileRoute
   '/api/rerank': typeof ApiRerankRoute
+  '/api/research': typeof ApiResearchRoute
   '/api/retrieve': typeof ApiRetrieveRoute
   '/api/rubric': typeof ApiRubricRoute
   '/essay/$id': typeof EssayIdRoute
@@ -208,8 +232,10 @@ export interface FileRoutesById {
   '/profile': typeof ProfileRoute
   '/admin/debug': typeof AdminDebugRoute
   '/api/claude-health': typeof ApiClaudeHealthRoute
+  '/api/dashboard': typeof ApiDashboardRoute
   '/api/db-health': typeof ApiDbHealthRoute
   '/api/draft': typeof ApiDraftRoute
+  '/api/drafts': typeof ApiDraftsRoute
   '/api/explain-fit': typeof ApiExplainFitRoute
   '/api/grade-essay': typeof ApiGradeEssayRoute
   '/api/ingest': typeof ApiIngestRoute
@@ -218,6 +244,7 @@ export interface FileRoutesById {
   '/api/plan': typeof ApiPlanRoute
   '/api/profile': typeof ApiProfileRoute
   '/api/rerank': typeof ApiRerankRoute
+  '/api/research': typeof ApiResearchRoute
   '/api/retrieve': typeof ApiRetrieveRoute
   '/api/rubric': typeof ApiRubricRoute
   '/essay/$id': typeof EssayIdRoute
@@ -235,8 +262,10 @@ export interface FileRouteTypes {
     | '/profile'
     | '/admin/debug'
     | '/api/claude-health'
+    | '/api/dashboard'
     | '/api/db-health'
     | '/api/draft'
+    | '/api/drafts'
     | '/api/explain-fit'
     | '/api/grade-essay'
     | '/api/ingest'
@@ -245,6 +274,7 @@ export interface FileRouteTypes {
     | '/api/plan'
     | '/api/profile'
     | '/api/rerank'
+    | '/api/research'
     | '/api/retrieve'
     | '/api/rubric'
     | '/essay/$id'
@@ -260,8 +290,10 @@ export interface FileRouteTypes {
     | '/profile'
     | '/admin/debug'
     | '/api/claude-health'
+    | '/api/dashboard'
     | '/api/db-health'
     | '/api/draft'
+    | '/api/drafts'
     | '/api/explain-fit'
     | '/api/grade-essay'
     | '/api/ingest'
@@ -270,6 +302,7 @@ export interface FileRouteTypes {
     | '/api/plan'
     | '/api/profile'
     | '/api/rerank'
+    | '/api/research'
     | '/api/retrieve'
     | '/api/rubric'
     | '/essay/$id'
@@ -285,8 +318,10 @@ export interface FileRouteTypes {
     | '/profile'
     | '/admin/debug'
     | '/api/claude-health'
+    | '/api/dashboard'
     | '/api/db-health'
     | '/api/draft'
+    | '/api/drafts'
     | '/api/explain-fit'
     | '/api/grade-essay'
     | '/api/ingest'
@@ -295,6 +330,7 @@ export interface FileRouteTypes {
     | '/api/plan'
     | '/api/profile'
     | '/api/rerank'
+    | '/api/research'
     | '/api/retrieve'
     | '/api/rubric'
     | '/essay/$id'
@@ -311,8 +347,10 @@ export interface RootRouteChildren {
   ProfileRoute: typeof ProfileRoute
   AdminDebugRoute: typeof AdminDebugRoute
   ApiClaudeHealthRoute: typeof ApiClaudeHealthRoute
+  ApiDashboardRoute: typeof ApiDashboardRoute
   ApiDbHealthRoute: typeof ApiDbHealthRoute
   ApiDraftRoute: typeof ApiDraftRoute
+  ApiDraftsRoute: typeof ApiDraftsRoute
   ApiExplainFitRoute: typeof ApiExplainFitRoute
   ApiGradeEssayRoute: typeof ApiGradeEssayRoute
   ApiIngestRoute: typeof ApiIngestRoute
@@ -321,6 +359,7 @@ export interface RootRouteChildren {
   ApiPlanRoute: typeof ApiPlanRoute
   ApiProfileRoute: typeof ApiProfileRoute
   ApiRerankRoute: typeof ApiRerankRoute
+  ApiResearchRoute: typeof ApiResearchRoute
   ApiRetrieveRoute: typeof ApiRetrieveRoute
   ApiRubricRoute: typeof ApiRubricRoute
   EssayIdRoute: typeof EssayIdRoute
@@ -394,6 +433,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiRetrieveRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/research': {
+      id: '/api/research'
+      path: '/api/research'
+      fullPath: '/api/research'
+      preLoaderRoute: typeof ApiResearchRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/rerank': {
       id: '/api/rerank'
       path: '/api/rerank'
@@ -450,6 +496,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiExplainFitRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/drafts': {
+      id: '/api/drafts'
+      path: '/api/drafts'
+      fullPath: '/api/drafts'
+      preLoaderRoute: typeof ApiDraftsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/draft': {
       id: '/api/draft'
       path: '/api/draft'
@@ -462,6 +515,13 @@ declare module '@tanstack/react-router' {
       path: '/api/db-health'
       fullPath: '/api/db-health'
       preLoaderRoute: typeof ApiDbHealthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/dashboard': {
+      id: '/api/dashboard'
+      path: '/api/dashboard'
+      fullPath: '/api/dashboard'
+      preLoaderRoute: typeof ApiDashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/claude-health': {
@@ -503,8 +563,10 @@ const rootRouteChildren: RootRouteChildren = {
   ProfileRoute: ProfileRoute,
   AdminDebugRoute: AdminDebugRoute,
   ApiClaudeHealthRoute: ApiClaudeHealthRoute,
+  ApiDashboardRoute: ApiDashboardRoute,
   ApiDbHealthRoute: ApiDbHealthRoute,
   ApiDraftRoute: ApiDraftRoute,
+  ApiDraftsRoute: ApiDraftsRoute,
   ApiExplainFitRoute: ApiExplainFitRoute,
   ApiGradeEssayRoute: ApiGradeEssayRoute,
   ApiIngestRoute: ApiIngestRoute,
@@ -513,6 +575,7 @@ const rootRouteChildren: RootRouteChildren = {
   ApiPlanRoute: ApiPlanRoute,
   ApiProfileRoute: ApiProfileRoute,
   ApiRerankRoute: ApiRerankRoute,
+  ApiResearchRoute: ApiResearchRoute,
   ApiRetrieveRoute: ApiRetrieveRoute,
   ApiRubricRoute: ApiRubricRoute,
   EssayIdRoute: EssayIdRoute,
