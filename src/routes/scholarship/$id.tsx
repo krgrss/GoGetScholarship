@@ -43,6 +43,13 @@ type GradeResult = {
   readiness: 'needs_work' | 'solid' | 'ready'
 }
 
+type PlannerTask = {
+  id: string
+  label: string
+  due_date: string | null
+  completed: boolean
+}
+
 type DetailResponse = {
   ok: boolean
   scholarship?: Scholarship
@@ -82,6 +89,10 @@ function ScholarshipPage() {
   const [gradeError, setGradeError] = React.useState<string | null>(null)
   const [sideTab, setSideTab] = React.useState<'rubric' | 'themes'>('rubric')
 
+  const [planLoading, setPlanLoading] = React.useState(false)
+  const [planError, setPlanError] = React.useState<string | null>(null)
+  const [planTasks, setPlanTasks] = React.useState<PlannerTask[]>([])
+
   React.useEffect(() => {
     let cancelled = false
     setLoading(true)
@@ -94,6 +105,9 @@ function ScholarshipPage() {
     setGradeResult(null)
     setGradeError(null)
     setGradeLoading(false)
+    setPlanTasks([])
+    setPlanError(null)
+    setPlanLoading(false)
 
     fetch(`/api/scholarship/${id}`)
       .then(async (res) => {
@@ -265,6 +279,58 @@ function ScholarshipPage() {
       .filter(Boolean).length
   }, [draft])
 
+  async function createPlan() {
+    if (!detail) return
+
+    if (!studentId) {
+      setPlanError(
+        'To plan this scholarship, open it from your matches so we know which student profile to use.',
+      )
+      return
+    }
+
+    setPlanLoading(true)
+    setPlanError(null)
+    setPlanTasks([])
+
+    try {
+      const res = await fetch('/api/plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_id: studentId,
+          scholarship_id: detail.id,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok || !data.ok) {
+        throw new Error(data?.error || `Plan request failed (${res.status})`)
+      }
+
+      const tasks = Array.isArray(data.tasks) ? data.tasks : []
+      setPlanTasks(
+        tasks.map((t: { id: string; label: string; due_date: string | null }) => ({
+          id: t.id,
+          label: t.label,
+          due_date: t.due_date ?? null,
+          completed: false,
+        })),
+      )
+    } catch (err: any) {
+      setPlanError(String(err.message || err))
+    } finally {
+      setPlanLoading(false)
+    }
+  }
+
+  function toggleTask(taskId: string) {
+    setPlanTasks((prev) =>
+      prev.map((task) =>
+        task.id === taskId ? { ...task, completed: !task.completed } : task,
+      ),
+    )
+  }
+
   function readinessLabel(readiness: GradeResult['readiness']) {
     switch (readiness) {
       case 'needs_work':
@@ -337,6 +403,24 @@ function ScholarshipPage() {
                 {detail.sponsor && (
                   <p className="text-xs text-muted-foreground">{detail.sponsor}</p>
                 )}
+                {detail.metadata?.amount_min != null &&
+                  detail.metadata?.amount_max != null && (
+                    <p className="text-[11px] text-muted-foreground">
+                      {detail.metadata.currency
+                        ? `${detail.metadata.currency} ${detail.metadata.amount_min.toLocaleString()}–${detail.metadata.amount_max.toLocaleString()}`
+                        : `${detail.metadata.amount_min.toLocaleString()}–${detail.metadata.amount_max.toLocaleString()}`}
+                    </p>
+                  )}
+                {detail.metadata?.deadline && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Deadline{' '}
+                    {new Date(detail.metadata.deadline).toLocaleDateString('en-US', {
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })}
+                  </p>
+                )}
               </div>
               <div className="space-y-1 text-right text-xs text-muted-foreground">
                 <div className="flex flex-wrap items-center justify-end gap-2">
@@ -357,6 +441,86 @@ function ScholarshipPage() {
                     {draftWordCount} / {wordTarget || '—'} words
                   </p>
                 )}
+              </div>
+            </div>
+
+            <div className="rounded-2xl bg-card p-5 shadow-sm ring-1 ring-border text-[11px] text-muted-foreground">
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-1">
+                  <p className="font-semibold text-foreground">About this scholarship</p>
+                  <p className="whitespace-pre-line text-xs">
+                    {detail.metadata?.description_raw || detail.raw_text.slice(0, 400)}
+                    {!detail.metadata?.description_raw &&
+                      detail.raw_text.length > 400 &&
+                      '…'}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="font-semibold text-foreground">Eligibility</p>
+                  <div className="space-y-1">
+                    <div>
+                      <p className="font-medium text-foreground">Academic</p>
+                      <ul className="mt-0.5 list-disc pl-4">
+                        {detail.metadata?.level_of_study && (
+                          <li>
+                            Level:{' '}
+                            {Array.isArray(detail.metadata.level_of_study)
+                              ? detail.metadata.level_of_study.join(', ')
+                              : detail.metadata.level_of_study}
+                          </li>
+                        )}
+                        {detail.metadata?.fields_of_study && (
+                          <li>
+                            Fields:{' '}
+                            {Array.isArray(detail.metadata.fields_of_study)
+                              ? detail.metadata.fields_of_study.join(', ')
+                              : detail.metadata.fields_of_study}
+                          </li>
+                        )}
+                        {detail.min_gpa && (
+                          <li>Minimum GPA: {String(detail.min_gpa)}</li>
+                        )}
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">Geographic</p>
+                      <ul className="mt-0.5 list-disc pl-4">
+                        {detail.metadata?.country_eligibility && (
+                          <li>
+                            Eligible countries:{' '}
+                            {Array.isArray(detail.metadata.country_eligibility)
+                              ? detail.metadata.country_eligibility.join(', ')
+                              : detail.metadata.country_eligibility}
+                          </li>
+                        )}
+                        {detail.metadata?.citizenship_requirements && (
+                          <li>
+                            Citizenship:{' '}
+                            {Array.isArray(detail.metadata.citizenship_requirements)
+                              ? detail.metadata.citizenship_requirements.join(', ')
+                              : detail.metadata.citizenship_requirements}
+                          </li>
+                        )}
+                      </ul>
+                    </div>
+                    <div>
+                      <p className="font-medium text-foreground">Demographic focus</p>
+                      <ul className="mt-0.5 list-disc pl-4">
+                        {detail.metadata?.demographic_eligibility && (
+                          <li>
+                            Required:{' '}
+                            {Array.isArray(detail.metadata.demographic_eligibility)
+                              ? detail.metadata.demographic_eligibility.join(', ')
+                              : detail.metadata.demographic_eligibility}
+                          </li>
+                        )}
+                        {detail.metadata?.financial_need_required && (
+                          <li>Financial need required</li>
+                        )}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -642,6 +806,103 @@ function ScholarshipPage() {
                           </div>
                         )}
                       </>
+                    )}
+                  </section>
+                )}
+
+                {detail && (
+                  <section className="space-y-2 border-t border-border pt-3">
+                    <div className="flex items-center justify-between gap-2 text-[11px] font-medium text-muted-foreground">
+                      <span>Application components & plan</span>
+                      {detail.metadata?.application_effort && (
+                        <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] font-medium text-foreground">
+                          Workload: {String(detail.metadata.application_effort)}
+                        </span>
+                      )}
+                    </div>
+
+                    {detail.metadata?.application_components ? (
+                      <ul className="mt-1 space-y-1 text-[11px] text-muted-foreground">
+                        {typeof detail.metadata.application_components.essays === 'number' &&
+                          detail.metadata.application_components.essays > 0 && (
+                            <li>
+                              Essays:{' '}
+                              {detail.metadata.application_components.essays}
+                            </li>
+                          )}
+                        {typeof detail.metadata.application_components.reference_letters ===
+                          'number' &&
+                          detail.metadata.application_components.reference_letters > 0 && (
+                            <li>
+                              Reference letters:{' '}
+                              {detail.metadata.application_components.reference_letters}
+                            </li>
+                          )}
+                        {detail.metadata.application_components.transcript_required && (
+                          <li>Transcript required</li>
+                        )}
+                        {detail.metadata.application_components.resume_required && (
+                          <li>Resume required</li>
+                        )}
+                        {detail.metadata.application_components.portfolio_required && (
+                          <li>Portfolio required</li>
+                        )}
+                        {detail.metadata.application_components.interview_possible && (
+                          <li>Interview possible</li>
+                        )}
+                      </ul>
+                    ) : (
+                      <p className="text-[11px] text-muted-foreground">
+                        Components for this scholarship haven&apos;t been configured yet.
+                      </p>
+                    )}
+
+                    <div className="mt-2 flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={createPlan}
+                        disabled={planLoading || !studentId}
+                        className="inline-flex items-center gap-1 rounded-full bg-secondary px-3 py-1.5 text-[11px] font-medium text-secondary-foreground shadow-sm transition hover:shadow-md disabled:opacity-60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
+                      >
+                        <Sparkles className="h-3.5 w-3.5" />
+                        <span>
+                          {planLoading ? 'Planning�?�' : 'Plan this scholarship'}
+                        </span>
+                      </button>
+                      {!studentId && (
+                        <span className="text-[11px] text-muted-foreground">
+                          Open from your matches to plan with your profile.
+                        </span>
+                      )}
+                      {planError && (
+                        <span className="text-[11px] text-destructive">{planError}</span>
+                      )}
+                    </div>
+
+                    {planTasks.length > 0 && (
+                      <div className="mt-2 space-y-1.5 text-[11px] text-muted-foreground">
+                        {planTasks.map((task) => (
+                          <label
+                            key={task.id}
+                            className="flex items-start gap-2 rounded-lg bg-background/80 px-2 py-1.5"
+                          >
+                            <input
+                              type="checkbox"
+                              className="mt-0.5 h-3 w-3 rounded border-border text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                              checked={task.completed}
+                              onChange={() => toggleTask(task.id)}
+                            />
+                            <div>
+                              <p className="text-[11px] text-foreground">{task.label}</p>
+                              {task.due_date && (
+                                <p className="text-[10px] text-muted-foreground">
+                                  Due by {task.due_date}
+                                </p>
+                              )}
+                            </div>
+                          </label>
+                        ))}
+                      </div>
                     )}
                   </section>
                 )}

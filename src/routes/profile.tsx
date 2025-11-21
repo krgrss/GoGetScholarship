@@ -10,6 +10,7 @@ function ProfilePage() {
   const [gpa, setGpa] = React.useState<string>('')
   const [major, setMajor] = React.useState('')
   const [country, setCountry] = React.useState('')
+   const [gender, setGender] = React.useState('')
   const [stories, setStories] = React.useState('')
   const [minGpa, setMinGpa] = React.useState<string>('')
 
@@ -34,6 +35,7 @@ function ProfilePage() {
       gpa && `GPA: ${gpa}`,
       major && `Major: ${major}`,
       country && `Country: ${country}`,
+      gender && `Gender: ${gender}`,
       stories && `Stories: ${stories}`,
     ].filter(Boolean)
     const student_summary = parts.join('\n') || 'Student profile summary'
@@ -52,6 +54,7 @@ function ProfilePage() {
           summary: student_summary,
           metadata: {
             stories: stories || undefined,
+            gender: gender || undefined,
           },
         }),
       })
@@ -70,6 +73,10 @@ function ProfilePage() {
           student_summary,
           min_gpa: minGpa ? Number(minGpa) : undefined,
           k: 20,
+          eligibility: {
+            country: country || undefined,
+            gender: gender || undefined,
+          },
         }),
       })
       const data = await res.json()
@@ -150,9 +157,16 @@ function ProfilePage() {
           </div>
           <Link
             to="/matches"
+            search={
+              studentSummary
+                ? {
+                    studentSummary,
+                  }
+                : undefined
+            }
             className="hidden rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm transition hover:bg-muted md:inline-flex"
           >
-            View matches
+            View matches board
           </Link>
         </header>
 
@@ -211,6 +225,21 @@ function ProfilePage() {
                   className="w-full rounded-full border border-border bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   placeholder="e.g., Canada, United States"
                 />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                  Gender (optional)
+                </label>
+                <select
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value)}
+                  className="w-full rounded-full border border-border bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">Prefer not to say</option>
+                  <option value="woman">Woman / female</option>
+                  <option value="man">Man / male</option>
+                  <option value="nonbinary">Non-binary / another identity</option>
+                </select>
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">

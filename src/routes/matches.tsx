@@ -14,6 +14,7 @@ type MatchCard = {
   demographicTags: string[]
   workload: string
   status?: 'in-progress' | 'ready'
+  eligible?: boolean
 }
 
 const MOCK_MATCHES: MatchCard[] = [
@@ -47,19 +48,154 @@ const MOCK_MATCHES: MatchCard[] = [
 
 export const Route = createFileRoute('/matches')({
   component: MatchesPage,
+  validateSearch: (search: { studentSummary?: string }) => search,
 })
 
 function MatchesPage() {
+  const { studentSummary } = Route.useSearch()
+
+  const [hideIneligible, setHideIneligible] = React.useState(false)
+  const [matches, setMatches] = React.useState<MatchCard[]>(MOCK_MATCHES)
+  const [loading, setLoading] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    if (!studentSummary) return
+
+    let cancelled = false
+    setLoading(true)
+    setError(null)
+
+    ;(async () => {
+      try {
+        const res = await fetch('/api/match', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            student_summary: studentSummary,
+            k: 20,
+            use_reranker: true,
+          }),
+        })
+        const data = await res.json()
+        if (!res.ok || !data.ok) {
+          throw new Error(data?.error || `Request failed (${res.status})`)
+        }
+        const rows = (data.rows || []) as any[]
+        if (cancelled) return
+
+        const mapped: MatchCard[] = rows.map((r) => {
+          const metadata = (r.metadata || {}) as any
+
+          const amountMin = metadata.amount_min
+          const amountMax = metadata.amount_max
+          const currency = metadata.currency
+          let amount = 'Amount not listed'
+          if (typeof amountMin === 'number' && typeof amountMax === 'number') {
+            const range = `${amountMin.toLocaleString()}–${amountMax.toLocaleString()}`
+            amount = currency ? `${currency} ${range}` : range
+          } else if (typeof amountMax === 'number') {
+            const max = amountMax.toLocaleString()
+            amount = currency ? `${currency} up to ${max}` : `Up to ${max}`
+          }
+
+          const deadlineIso = metadata.deadline as string | undefined
+          let deadline = 'Deadline not listed'
+          let daysLeft = ''
+          if (deadlineIso) {
+            const d = new Date(deadlineIso)
+            if (!Number.isNaN(d.getTime())) {
+              deadline = d.toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              })
+              const now = new Date()
+              const diffDays = Math.round(
+                (d.getTime() - now.getTime()) / (1000 * 60 * 60 * 24),
+              )
+              if (diffDays >= 0) {
+                daysLeft = `${diffDays} days left`
+              }
+            }
+          }
+
+          const levelTags: string[] = Array.isArray(metadata.level_of_study)
+            ? metadata.level_of_study
+            : []
+          const fieldTags: string[] = Array.isArray(metadata.fields_of_study)
+            ? metadata.fields_of_study
+            : Array.isArray(r.fields)
+              ? r.fields
+              : []
+
+          const demographicTags: string[] = Array.isArray(metadata.demographic_eligibility)
+            ? metadata.demographic_eligibility
+            : []
+
+          const workload =
+            typeof metadata.application_effort === 'string'
+              ? metadata.application_effort
+              : 'Varies'
+
+          return {
+            id: String(r.id),
+            name: r.name as string,
+            provider: (r.sponsor as string) || 'Scholarship',
+            amount,
+            deadline,
+            daysLeft,
+            levelTags,
+            fieldTags,
+            demographicTags,
+            workload,
+          }
+        })
+
+        setMatches(mapped)
+      } catch (err: any) {
+        if (!cancelled) {
+          setError(String(err.message || err))
+          setMatches(MOCK_MATCHES)
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    })()
+
+    return () => {
+      cancelled = true
+    }
+  }, [studentSummary])
+
+  const matchesToShow = React.useMemo(
+    () =>
+      hideIneligible
+        ? matches.filter((m) => m.eligible !== false)
+        : matches,
+    [hideIneligible, matches],
+  )
+
   return (
     <div className="min-h-screen bg-background text-foreground">
       <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8">
-        <header className="space-y-2">
-          <h1 className="font-display text-2xl leading-snug sm:text-3xl">
-            Your scholarship matches
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Based on your profile and interests. Adjust filters to explore more.
-          </p>
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <div className="space-y-1">
+            <h1 className="font-display text-2xl leading-snug sm:text-3xl">
+              Your scholarship matches
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Based on your profile and interests. Adjust filters to explore more.
+            </p>
+          </div>
+          <Link
+            to="/profile"
+            className="inline-flex items-center gap-2 rounded-full bg-primary px-4 py-2 text-xs font-medium text-primary-foreground shadow-sm transition hover:bg-primary/90"
+          >
+            Find matches (Claude reranker)
+          </Link>
         </header>
 
         <section className="grid gap-6 lg:grid-cols-[260px_minmax(0,1fr)]">
@@ -130,7 +266,12 @@ function MatchesPage() {
                   Toggles
                 </label>
                 <label className="flex items-center gap-2">
-                  <input type="checkbox" className="h-3 w-3 rounded border-border" />
+                  <input
+                    type="checkbox"
+                    className="h-3 w-3 rounded border-border"
+                    checked={hideIneligible}
+                    onChange={(e) => setHideIneligible(e.target.checked)}
+                  />
                   <span>Show scholarships with priority for my demographics</span>
                 </label>
                 <label className="flex items-center gap-2">
@@ -145,7 +286,9 @@ function MatchesPage() {
             <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
               <div className="inline-flex items-center gap-1 rounded-full bg-muted px-2 py-1">
                 <Filter className="h-3 w-3" />
-                <span>{MOCK_MATCHES.length} matches</span>
+                <span>
+                  {loading ? 'Loading matches…' : `${matchesToShow.length} matches`}
+                </span>
               </div>
               <Link
                 to="/onboarding"
@@ -156,7 +299,13 @@ function MatchesPage() {
             </div>
 
             <div className="grid gap-3">
-              {MOCK_MATCHES.map((match) => (
+              {error && (
+                <p className="text-xs text-destructive">
+                  {error}
+                </p>
+              )}
+
+              {matchesToShow.map((match) => (
                 <article
                   key={match.id}
                   className="group rounded-2xl bg-card p-4 shadow-sm ring-1 ring-border transition hover:-translate-y-0.5 hover:ring-primary/50"

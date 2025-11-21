@@ -24,6 +24,7 @@ type MatchBody = {
     fields_of_study?: string[]
     citizenship?: string
     has_financial_need?: boolean
+    gender?: string
   }
 }
 
@@ -44,6 +45,7 @@ export const Route = createFileRoute('/api/match')({
               fieldsOfStudy: body.eligibility.fields_of_study,
               citizenship: body.eligibility.citizenship,
               hasFinancialNeed: body.eligibility.has_financial_need,
+              gender: body.eligibility.gender,
             }
           : undefined
 

@@ -47,6 +47,11 @@ export type EligibilityFilter = {
    * If true, prefer scholarships that require need when that flag is set.
    */
   hasFinancialNeed?: boolean
+  /**
+   * Student's self-identified gender (e.g., "woman", "man", "nonbinary").
+   * Used to enforce hard demographic requirements like `women_only`.
+   */
+  gender?: string
 }
 
 /** Negative inner product (dot product) distance query with pgvector */
@@ -73,6 +78,7 @@ export async function topKByEmbedding(
     eligibility?.fieldsOfStudy ?? null, // $6
     eligibility?.citizenship ?? null, // $7
     typeof eligibility?.hasFinancialNeed === 'boolean' ? eligibility.hasFinancialNeed : null, // $8
+    eligibility?.gender ?? null, // $9
   ]
 
   // Use negative inner product operator `<#>` and HNSW index on vector_ip_ops
@@ -129,8 +135,33 @@ export async function topKByEmbedding(
         $8::boolean is null
         or $8::boolean = false
         or (
-          (s.metadata->>'financial_need_required')::boolean is true
-          or s.metadata ? 'financial_need_required' = false
+          -- Either the scholarship explicitly requires need...
+          (s.metadata ? 'financial_need_required'
+           and (s.metadata->>'financial_need_required')::boolean is true)
+          -- ...or it does not specify this flag at all.
+          or not (s.metadata ? 'financial_need_required')
+        )
+      )
+      -- Demographic hard filters (gender-based examples)
+      and (
+        $9::text is null
+        or not (
+          s.metadata ? 'demographic_eligibility'
+          and (
+            -- Scholarship requires women but student does not identify as a woman
+            (
+              $9::text in ('man', 'male')
+              and (
+                (s.metadata->'demographic_eligibility') ? 'women_only'
+                or (s.metadata->'demographic_eligibility') ? 'women'
+              )
+            )
+            -- Scholarship requires men but student does not identify as a man
+            or (
+              $9::text in ('woman', 'female')
+              and (s.metadata->'demographic_eligibility') ? 'men_only'
+            )
+          )
         )
       )
     order by e.embedding <#> $1::vector
