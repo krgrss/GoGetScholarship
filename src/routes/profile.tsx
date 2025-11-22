@@ -30,13 +30,13 @@ function ProfilePage() {
     setRerankError(null)
 
     const parts = [
-      name && `Name: ${name}`,
-      gpa && `GPA: ${gpa}`,
-      major && `Major: ${major}`,
-      country && `Country: ${country}`,
-      stories && `Stories: ${stories}`,
+      name && `Name: ${name.trim()}`,
+      gpa && `GPA: ${gpa.trim()}`,
+      major && `Major: ${major.trim()}`,
+      country && `Country: ${country.trim()}`,
+      stories && `Stories: ${stories.trim()}`,
     ].filter(Boolean)
-    const student_summary = parts.join('\n') || 'Student profile summary'
+    const student_summary = parts.join('\n').trim() || 'Student profile summary'
     setStudentSummary(student_summary)
 
     try {
@@ -61,7 +61,20 @@ function ProfilePage() {
       }
       if (profileData.student_id) {
         setStudentId(profileData.student_id)
+        localStorage.setItem('scholarship_student_id', profileData.student_id)
       }
+
+      // Persist summary for downstream match calls as a basic cache for the demo.
+      const profilePayload = {
+        name,
+        gpa: gpa || undefined,
+        major: major || undefined,
+        country: country || undefined,
+        stories: stories || undefined,
+        summary: student_summary,
+        updatedAt: new Date().toISOString(),
+      }
+      localStorage.setItem('scholarship_profile', JSON.stringify(profilePayload))
 
       const res = await fetch('/api/match', {
         method: 'POST',
@@ -162,9 +175,10 @@ function ProfilePage() {
             className="space-y-4 rounded-2xl bg-card p-5 text-sm shadow-sm ring-1 ring-border"
           >
             <div className="space-y-1">
-              <h2 className="text-sm font-semibold">Basics</h2>
+              <h2 className="text-sm font-semibold">Profile basics</h2>
               <p className="text-[11px] text-muted-foreground">
-                Fill just enough that a real student might write here.
+                Fill just enough that a real student might write here. This saves to `/api/profile`
+                and localStorage so Matches can re-use it.
               </p>
             </div>
 

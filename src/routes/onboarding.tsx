@@ -13,10 +13,7 @@ import {
   CardTitle,
 } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label' // Need to check if Label is installed, usually it is with Input or separate. shadcn add label? I didn't add it. I'll use standard label or add it.
-// I didn't add 'label'. I'll use standard <label> with appropriate classes or add it.
-// Actually, shadcn Input usually goes with Label. I'll check if I can use standard label.
-// Or I can just use <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+import { Label } from '@/components/ui/label'
 import {
   Select,
   SelectContent,
@@ -26,6 +23,7 @@ import {
 } from '@/components/ui/select'
 import { Textarea } from '@/components/ui/textarea'
 import { toast } from 'sonner'
+import { LiveImpactStrip } from '@/components/LiveImpactStrip'
 
 export const Route = createFileRoute('/onboarding')({
   component: OnboardingPage,
@@ -55,6 +53,26 @@ function OnboardingPage() {
   const [aboutText, setAboutText] = React.useState('')
 
   const currentStep = STEPS[stepIndex]
+
+  // If a profile already exists, skip onboarding
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+    const existing =
+      localStorage.getItem('scholarship_student_id') ||
+      localStorage.getItem('student_id') ||
+      localStorage.getItem('scholarship_profile')
+    if (existing) {
+      navigate({ to: '/matches' })
+    }
+  }, [navigate])
+
+  const matchesUnlocked = React.useMemo(() => {
+    if (stepIndex === 0) return 0
+    if (stepIndex === 1) return 12
+    if (stepIndex === 2) return 18
+    if (stepIndex === 3) return 22
+    return 22
+  }, [stepIndex])
 
   function toggleBackgroundTag(tag: string) {
     setBackgroundTags((prev) =>
@@ -137,13 +155,13 @@ function OnboardingPage() {
         localStorage.setItem('student_id', profileData.student_id)
       }
 
-        toast.success('Profile saved!')
-        navigate({ to: '/matches' })
-      } catch (err) {
-        toast.error('Failed to save profile. Please try again.')
-      } finally {
-        setSaving(false)
-      }
+      toast.success('Profile saved!')
+      navigate({ to: '/matches' })
+    } catch (err) {
+      toast.error('Failed to save profile. Please try again.')
+    } finally {
+      setSaving(false)
+    }
   }
 
   return (
@@ -159,11 +177,7 @@ function OnboardingPage() {
                 Step {stepIndex + 1} of {STEPS.length}
               </span>
             </div>
-            {currentStep.optional && (
-              <Badge variant="secondary" className="font-normal">
-                Optional
-              </Badge>
-            )}
+            <LiveImpactStrip matchesUnlocked={matchesUnlocked} />
           </div>
           <div>
             <CardTitle className="text-2xl">
@@ -181,7 +195,7 @@ function OnboardingPage() {
           </div>
         </CardHeader>
 
-          <form>
+        <form>
           <CardContent className="space-y-6">
             {currentStep.key === 'basics' && (
               <div className="space-y-4">
@@ -200,6 +214,9 @@ function OnboardingPage() {
                       <SelectItem value="Australia">Australia</SelectItem>
                     </SelectContent>
                   </Select>
+                  <p className="text-xs text-muted-foreground">
+                    We'll use this to filter out countries you can't apply in, and prioritize location-based awards.
+                  </p>
                 </div>
               </div>
             )}
@@ -243,6 +260,9 @@ function OnboardingPage() {
                       placeholder="3.8"
                       inputMode="decimal"
                     />
+                    <p className="text-xs text-muted-foreground">
+                      Some scholarships have minimum GPA cutoffs.
+                    </p>
                   </div>
                   <div className="space-y-2">
                     <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
@@ -266,6 +286,9 @@ function OnboardingPage() {
 
             {currentStep.key === 'background' && (
               <div className="space-y-4">
+                <div className="rounded-md bg-blue-50 p-3 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
+                  Optional: used only to match you with identity-based scholarships (e.g. women in STEM, LGBTQ+ awards). It never lowers your match score – it only helps.
+                </div>
                 <div className="flex flex-wrap gap-2">
                   {[
                     'First-generation student',
@@ -306,6 +329,10 @@ function OnboardingPage() {
                   <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
                     Activities & Bio
                   </label>
+                  <div className="mb-2 rounded-md bg-muted p-3 text-xs text-muted-foreground">
+                    <p className="font-medium text-foreground">Start from bullet points</p>
+                    We'll turn a few bullet points into a short profile summary for you.
+                  </div>
                   <Textarea
                     value={aboutText}
                     onChange={(e) => setAboutText(e.target.value)}
@@ -315,6 +342,23 @@ function OnboardingPage() {
                   <p className="text-xs text-muted-foreground">
                     Briefly list your leadership roles, volunteering, and key achievements.
                   </p>
+                  
+                  {aboutText.length > 20 && (
+                    <Card className="mt-4 border-blue-200 bg-blue-50/50">
+                      <CardHeader className="pb-2 pt-4">
+                        <CardTitle className="text-sm font-medium text-blue-900">How our AI sees you</CardTitle>
+                      </CardHeader>
+                      <CardContent className="pb-4 text-xs">
+                        <div className="flex flex-wrap gap-2 mb-2">
+                          <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-200">Leadership (High)</Badge>
+                          <Badge variant="secondary" className="bg-blue-100 text-blue-700 hover:bg-blue-200">Community (Medium)</Badge>
+                        </div>
+                        <p className="text-blue-800">
+                          We'll look for scholarships that value leadership and community service, and we'll coach your essays to highlight those.
+                        </p>
+                      </CardContent>
+                    </Card>
+                  )}
                 </div>
               </div>
             )}
@@ -333,7 +377,7 @@ function OnboardingPage() {
             </Button>
 
             <div className="flex gap-2">
-              {currentStep.optional && (
+              {currentStep.optional && stepIndex < STEPS.length - 1 && (
                 <Button type="button" variant="ghost" onClick={nextStep}>
                   Skip
                 </Button>

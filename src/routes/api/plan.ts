@@ -127,7 +127,7 @@ export const Route = createFileRoute('/api/plan')({
             `select id from application_plans where application_id = $1::uuid`,
             [applicationId],
           )
-          if (existingPlans.rowCount > 0) {
+          if ((existingPlans.rowCount ?? 0) > 0) {
             const planIds = existingPlans.rows.map((r) => r.id as string)
             await client.query(
               `delete from application_tasks where plan_id = ANY($1::uuid[])`,

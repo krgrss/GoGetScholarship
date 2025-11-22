@@ -2,13 +2,10 @@ import { createFileRoute, Link } from '@tanstack/react-router'
 import {
   AlertCircle,
   ArrowRight,
-  ArrowUpRight,
   CheckCircle2,
   Clock,
   FileText,
-  MoreHorizontal,
   Plus,
-  Search,
   Sparkles,
   TrendingUp,
 } from 'lucide-react'
@@ -16,23 +13,7 @@ import * as React from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Progress } from '@/components/ui/progress'
 import {
   Table,
@@ -62,8 +43,10 @@ type DashboardApplication = {
   deadline: string
   status: string
   progress: number
-  readiness: string
+  readiness: 'needs_work' | 'solid' | 'ready'
   nextAction: string
+  workloadLabel?: 'Light' | 'Medium' | 'Heavy'
+  workloadItems?: string[]
 }
 
 function DashboardPage() {
@@ -85,7 +68,7 @@ function DashboardPage() {
 
         if (!studentId) {
           setError(
-            'No saved profile found. Complete the onboarding flow and create at least one draft to see your dashboard.',
+            'No saved profile found. Complete onboarding to save your profile and drafts first.',
           )
           return
         }
@@ -99,7 +82,7 @@ function DashboardPage() {
         setKpi(json.kpi as DashboardKpi)
         setApplications((json.applications ?? []) as DashboardApplication[])
       } catch (e: any) {
-        setError(String(e.message || e))
+        setError(String(e?.message || e))
       } finally {
         setLoading(false)
       }
@@ -108,20 +91,18 @@ function DashboardPage() {
     void load()
   }, [])
 
-  const suggestions = [
-    {
-      id: 's1',
-      name: 'Engineering Excellence Award',
-      reason: 'Reuses 80% of your "STEM Innovators" essay.',
-      effort: 'Low Effort',
-    },
-    {
-      id: 's2',
-      name: 'Future Builders Grant',
-      reason: 'Same reference letters required.',
-      effort: 'Quick Apply',
-    },
-  ]
+  const suggestions = React.useMemo(() => {
+    if (!applications.length) return [] as { id: string; text: string; href: string }[]
+    const candidates = applications
+      .filter((a) => a.status.toLowerCase().includes('progress') && a.readiness !== 'ready')
+      .sort((a, b) => (a.workloadLabel === 'Light' ? -1 : 0) - (b.workloadLabel === 'Light' ? -1 : 0))
+      .slice(0, 3)
+    return candidates.map((app) => ({
+      id: app.id,
+      text: `Low effort: ${app.name}`,
+      href: `/scholarship/${app.id}`,
+    }))
+  }, [applications])
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)] flex-col bg-muted/10 pb-12">
@@ -130,7 +111,7 @@ function DashboardPage() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
             <p className="text-muted-foreground">
-              Track your applications and find new opportunities.
+              Track your applications, readiness, and next steps.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -143,241 +124,186 @@ function DashboardPage() {
           </div>
         </div>
 
-        {/* KPI Cards */}
-        {kpi ? (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            {[
-              {
-                title: 'Total Applications',
-                value: String(kpi.total),
-                change: '',
-                icon: FileText,
-              },
-              {
-                title: 'In Progress',
-                value: String(kpi.inProgress),
-                change: '',
-                icon: Clock,
-              },
-              {
-                title: 'Completed',
-                value: String(kpi.completed),
-                change: '',
-                icon: CheckCircle2,
-              },
-              {
-                title: 'Potential Value',
-                value: kpi.potentialValue,
-                change: '',
-                icon: TrendingUp,
-              },
-            ].map((item) => (
-              <Card key={item.title}>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    {item.title}
-                  </CardTitle>
-                  <item.icon className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{item.value}</div>
-                  <p className="text-xs text-muted-foreground">{item.change}</p>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <Card className="md:col-span-2 lg:col-span-4">
-              <CardContent className="py-6 text-sm text-muted-foreground">
-                {loading
-                  ? 'Loading your dashboard…'
-                  : error ||
-                    'Your dashboard will populate once you have saved drafts and applications.'}
-              </CardContent>
-            </Card>
-          </div>
+        {error && (
+          <Card className="mb-6 border-destructive/30 bg-destructive/5">
+            <CardContent className="flex items-center gap-2 py-4 text-sm text-destructive">
+              <AlertCircle className="h-4 w-4" />
+              <span>{error}</span>
+            </CardContent>
+          </Card>
         )}
 
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+          {kpi
+            ? [
+                {
+                  title: 'Total Applications',
+                  value: String(kpi.total),
+                  icon: FileText,
+                },
+                {
+                  title: 'In Progress',
+                  value: String(kpi.inProgress),
+                  icon: Clock,
+                },
+                {
+                  title: 'Completed',
+                  value: String(kpi.completed),
+                  icon: CheckCircle2,
+                },
+                {
+                  title: 'Potential Value',
+                  value: kpi.potentialValue,
+                  icon: TrendingUp,
+                },
+              ].map((item) => (
+                <Card key={item.title}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">{item.title}</CardTitle>
+                    <item.icon className="h-4 w-4 text-muted-foreground" />
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{item.value}</div>
+                  </CardContent>
+                </Card>
+              ))
+            : Array.from({ length: 4 }).map((_, idx) => (
+                <Card key={idx}>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-sm font-medium text-muted-foreground">Loading…</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-6 w-24 animate-pulse rounded bg-muted" />
+                  </CardContent>
+                </Card>
+              ))}
+        </div>
+
         <div className="mt-8 grid gap-8 lg:grid-cols-[2fr_1fr]">
-          {/* Main Content - Applications List */}
-          <div className="space-y-6">
+          <div className="space-y-4">
             <Card>
               <CardHeader>
                 <CardTitle>Your Applications</CardTitle>
                 <CardDescription>
-                  Manage your ongoing scholarship applications and see how close each
-                  essay is to \"ready\".
+                  Essays and drafts you've started. Progress updates as you write.
                 </CardDescription>
               </CardHeader>
               <CardContent>
-                <div className="mb-4 flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="search"
-                      placeholder="Search applications..."
-                      className="pl-8"
-                    />
-                  </div>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="outline" size="icon">
-                        <MoreHorizontal className="h-4 w-4" />
-                        <span className="sr-only">Filter</span>
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuLabel>Filter by Status</DropdownMenuLabel>
-                      <DropdownMenuSeparator />
-                      <DropdownMenuItem>In Progress</DropdownMenuItem>
-                      <DropdownMenuItem>Submitted</DropdownMenuItem>
-                      <DropdownMenuItem>Not Started</DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </div>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Scholarship</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Readiness</TableHead>
-                      <TableHead>Progress</TableHead>
-                      <TableHead className="text-right">Action</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {applications.map((app) => (
-                      <TableRow key={app.id}>
-                        <TableCell>
-                          <div className="font-medium">{app.name}</div>
-                          <div className="text-xs text-muted-foreground">
-                            Due: {app.deadline}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              app.status === 'Submitted'
-                                ? 'secondary'
-                                : app.status === 'In Progress'
-                                  ? 'default'
-                                  : 'outline'
-                            }
-                            className={
-                                app.status === 'Submitted'
-                                ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400'
-                                : ''
-                            }
-                          >
-                            {app.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant={
-                              app.readiness === 'High'
-                                ? 'secondary'
-                                : app.readiness === 'Medium'
-                                  ? 'default'
-                                  : 'outline'
-                            }
-                            className={
-                              app.readiness === 'High'
-                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
-                                : ''
-                            }
-                          >
-                            {app.readiness}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-2">
-                            <Progress value={app.progress} className="w-[60px]" />
-                            <span className="text-xs text-muted-foreground">
-                              {app.progress}%
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-right">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            asChild
-                            className="h-8 w-8 p-0"
-                          >
-                            <Link to="/scholarship/$id" params={{ id: app.id }}>
-                              <ArrowRight className="h-4 w-4" />
-                              <span className="sr-only">View</span>
-                            </Link>
-                          </Button>
-                        </TableCell>
+                {loading ? (
+                  <p className="text-sm text-muted-foreground">Loading…</p>
+                ) : applications.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">
+                    No applications yet. Start from Matches to create your first draft.
+                  </p>
+                ) : (
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Scholarship</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Progress</TableHead>
+                        <TableHead>Readiness</TableHead>
+                        <TableHead>Workload</TableHead>
+                        <TableHead>Next Action</TableHead>
                       </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
+                    </TableHeader>
+                    <TableBody>
+                      {applications.map((app) => (
+                        <TableRow key={app.draftId}>
+                          <TableCell>
+                            <div className="space-y-1">
+                              <div className="font-medium">{app.name}</div>
+                              <div className="text-xs text-muted-foreground">
+                                {app.provider} • {app.deadline}
+                              </div>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge variant="secondary" className="font-normal">
+                              {app.status}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Progress value={app.progress} className="h-2 w-24" />
+                              <span className="text-xs text-muted-foreground">{app.progress}%</span>
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Badge
+                              variant={
+                                app.readiness === 'ready'
+                                  ? 'default'
+                                  : app.readiness === 'solid'
+                                    ? 'secondary'
+                                    : 'outline'
+                              }
+                            >
+                              {app.readiness}
+                            </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {app.workloadLabel ? (
+                              <Badge variant="outline" className="font-normal">
+                                {app.workloadLabel}
+                              </Badge>
+                            ) : (
+                              <span className="text-[11px] text-muted-foreground">n/a</span>
+                            )}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <span className="text-xs text-muted-foreground">{app.nextAction}</span>
+                              <Button asChild variant="ghost" size="icon" className="h-8 w-8">
+                                <Link to="/scholarship/$id" params={{ id: app.id }}>
+                                  <ArrowRight className="h-4 w-4" />
+                                </Link>
+                              </Button>
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                )}
               </CardContent>
             </Card>
           </div>
 
-          {/* Sidebar - Suggestions */}
-          <div className="space-y-6">
-            <Card className="bg-gradient-to-br from-indigo-50 to-purple-50 dark:from-indigo-950/20 dark:to-purple-950/20">
-              <CardHeader>
-                <CardTitle className="flex items-center gap-2 text-lg">
-                  <Sparkles className="h-5 w-5 text-indigo-600 dark:text-indigo-400" />
-                  Low Extra Work
-                </CardTitle>
-                <CardDescription>
-                  Scholarships you can apply to with minimal effort.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="grid gap-4">
-                {suggestions.map((suggestion) => (
-                  <div
-                    key={suggestion.id}
-                    className="rounded-lg border bg-background p-3 shadow-sm"
-                  >
-                    <div className="mb-1 flex items-start justify-between gap-2">
-                      <h4 className="font-semibold leading-tight">
-                        {suggestion.name}
-                      </h4>
-                      <Badge variant="secondary" className="shrink-0 text-[10px]">
-                        {suggestion.effort}
-                      </Badge>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {suggestion.reason}
-                    </p>
-                    <Button
-                      variant="link"
-                      className="mt-2 h-auto p-0 text-xs text-indigo-600 dark:text-indigo-400"
-                    >
-                      View Details <ArrowUpRight className="ml-1 h-3 w-3" />
-                    </Button>
-                  </div>
-                ))}
-              </CardContent>
-            </Card>
-
+          <div className="space-y-4">
             <Card>
               <CardHeader>
-                <CardTitle className="text-lg">Upcoming Deadlines</CardTitle>
+                <CardTitle>Suggestions</CardTitle>
+                <CardDescription>
+                  Low extra work scholarships based on drafts you've started.
+                </CardDescription>
               </CardHeader>
-              <CardContent className="grid gap-4">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400">
-                    <AlertCircle className="h-5 w-5" />
-                  </div>
-                  <div className="space-y-1">
-                    <p className="text-sm font-medium leading-none">
-                      Women in Tech Scholarship
-                    </p>
-                    <p className="text-xs text-muted-foreground">
-                      Due in 2 days
-                    </p>
-                  </div>
-                </div>
+              <CardContent className="space-y-3">
+                {suggestions.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No suggestions yet.</p>
+                ) : (
+                  suggestions.map((s) => (
+                    <div key={s.id} className="rounded-md border p-3">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium">{s.text}</p>
+                        <Badge variant="secondary" className="font-normal">
+                          Low effort
+                        </Badge>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="mt-2 h-8 gap-1 text-xs"
+                        asChild
+                      >
+                        <Link to="/scholarship/$id" params={{ id: s.id }}>
+                          Open
+                          <Sparkles className="h-3 w-3" />
+                        </Link>
+                      </Button>
+                    </div>
+                  ))
+                )}
               </CardContent>
             </Card>
           </div>
@@ -386,3 +312,5 @@ function DashboardPage() {
     </div>
   )
 }
+
+export default DashboardPage

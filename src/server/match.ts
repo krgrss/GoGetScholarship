@@ -25,6 +25,8 @@ export type MatchRow = {
   name: string
   url: string | null
   min_gpa: number | null
+  fields?: string[] | null
+  metadata?: any
   distance: number
   dot_sim: number
   score?: number

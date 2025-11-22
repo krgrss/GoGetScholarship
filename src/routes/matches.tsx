@@ -51,11 +51,57 @@ type MatchCard = {
   levelTags: string[]
   fieldTags: string[]
   demographicTags: string[]
+  countryTags: string[]
   workload: string
   workloadLabel: 'Light' | 'Medium' | 'Heavy'
   matchScore: number
   status?: 'in-progress' | 'ready'
 }
+
+type ApiMatchRow = {
+  id: string
+  name: string
+  country?: string | null
+  url?: string | null
+  min_gpa?: number | null
+  distance?: number | null
+  dot_sim?: number
+  fields?: string[] | null
+  metadata?: Record<string, any> | null
+}
+
+const FALLBACK_MATCHES: MatchCard[] = [
+  {
+    id: 'fallback-1',
+    name: 'Loran Award (demo)',
+    provider: 'Loran Scholars Foundation',
+    amount: 'Up to $100,000',
+    deadline: 'October 16, 2025',
+    daysLeft: '',
+    levelTags: ['High School', 'Undergrad'],
+    fieldTags: ['Any'],
+    demographicTags: ['None specified'],
+    countryTags: ['Canada'],
+    workload: 'Essays + Refs',
+    workloadLabel: 'Heavy',
+    matchScore: 70,
+  },
+  {
+    id: 'fallback-2',
+    name: 'RBC Future Launch – Indigenous Youth (demo)',
+    provider: 'Royal Bank of Canada',
+    amount: '$10,000 / year',
+    deadline: 'February 5, 2025',
+    daysLeft: '',
+    levelTags: ['Undergrad'],
+    fieldTags: ['Any'],
+    demographicTags: ['Indigenous identity'],
+    countryTags: ['Canada'],
+    workload: 'Essays + Refs',
+    workloadLabel: 'Medium',
+    matchScore: 68,
+  },
+]
 
 function MatchesPage() {
   const [matches, setMatches] = React.useState<MatchCard[]>([])
@@ -111,37 +157,87 @@ function MatchesPage() {
           throw new Error(data?.error || `Request failed (${res.status})`)
         }
 
-        const rows: {
-          id: string
-          name: string
-          url?: string | null
-          min_gpa?: number | null
-          distance?: number
-          dot_sim?: number
-        }[] = data.rows || []
+        const rows: ApiMatchRow[] = data.rows || []
 
-        const next: MatchCard[] = rows.map((row, index) => ({
-          id: String(row.id),
-          name: row.name,
-          provider: 'Scholarship provider',
-          amount: 'See details',
-          deadline: 'See details',
-          daysLeft: '',
-          levelTags: [],
-          fieldTags: [],
-          demographicTags: [],
-          workload: 'See components',
-          workloadLabel: 'Medium',
-          matchScore:
-            typeof row.dot_sim === 'number'
-              ? Math.round(row.dot_sim * 100)
-              : 70 - index,
-        }))
+        let next: MatchCard[] = rows.map((row, index) => {
+          const workloadMeta = computeWorkload(row)
+          return {
+            id: String(row.id),
+            name: row.name,
+            provider: 'Scholarship provider',
+            amount: 'See details',
+            deadline: 'See details',
+            daysLeft: '',
+            levelTags: formatTags(extractArray(row.metadata?.level_of_study)),
+            fieldTags: formatTags(extractFields(row)),
+            demographicTags: formatTags(
+              (row.metadata?.demographic_eligibility as string[] | undefined)?.filter(
+                (tag) => tag && tag !== 'none_specified',
+              ) ?? [],
+            ),
+            countryTags: formatTags(extractCountries(row)),
+            workload: workloadMeta.text,
+            workloadLabel: workloadMeta.label,
+            matchScore: computeMatchScore(row, index),
+          }
+        })
+
+        // Dedupe by scholarship id in case retrieval returns duplicates
+        const deduped = new Map<string, MatchCard>()
+        next.forEach((m) => {
+          const key = (m.id || m.name || '').toLowerCase()
+          const existing = deduped.get(key)
+          if (!existing || m.matchScore > existing.matchScore) {
+            deduped.set(key, m)
+          }
+        })
+        next = Array.from(deduped.values()).filter((m) => m.name)
+
+        // Optional rerank to honor /api/rerank when using profile-based matches.
+        if (!browseAll && studentSummary && rows.length > 0) {
+          try {
+            const rerankRes = await fetch('/api/rerank', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                student_summary: studentSummary,
+                candidates: rows.map((r) => ({
+                  id: String(r.id),
+                  name: r.name,
+                  snippet:
+                    (r.metadata?.description_raw as string | undefined) ??
+                    (r.metadata?.raw_text as string | undefined) ??
+                    '',
+                  min_gpa: r.min_gpa ?? undefined,
+                  country: r.country ?? extractCountries(r)[0] ?? undefined,
+                  fields: Array.isArray(r.fields) ? r.fields : [],
+                })),
+              }),
+            })
+            const rerankData = await rerankRes.json()
+            if (rerankRes.ok && rerankData?.ok && Array.isArray(rerankData.ranking)) {
+              const byId = new Map(next.map((m) => [m.id, m]))
+              next = rerankData.ranking
+                .map((r: any, idx: number) => {
+                  const base = byId.get(String(r.id))
+                    if (!base) return null
+                    return {
+                      ...base,
+                      // keep original normalized score; rerank only affects order
+                      matchScore: base.matchScore,
+                    }
+                  })
+                  .filter(Boolean) as MatchCard[]
+            }
+          } catch (err) {
+            // If rerank fails, keep base vector ordering.
+          }
+        }
 
         setMatches(next)
       } catch (e: any) {
-        setError(String(e.message || e))
-        setMatches([])
+        setError(String(e?.message || e || 'Failed to load matches; showing fallback.'))
+        setMatches(FALLBACK_MATCHES)
       } finally {
         setLoading(false)
       }
@@ -321,6 +417,11 @@ function MatchesPage() {
                           {tag}
                         </Badge>
                       ))}
+                      {match.countryTags.map((tag) => (
+                        <Badge key={tag} variant="outline" className="border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-300">
+                          {tag}
+                        </Badge>
+                      ))}
                       {match.fieldTags.map((tag) => (
                         <Badge key={tag} variant="outline">
                           {tag}
@@ -364,6 +465,93 @@ function MatchesPage() {
       </main>
     </div>
   )
+}
+
+function formatTags(tags: string[]): string[] {
+  return tags
+    .map((t) =>
+      t
+        .replace(/_/g, ' ')
+        .replace(/\b\w/g, (ch) => ch.toUpperCase()),
+    )
+    .filter(Boolean)
+}
+
+function extractArray(value: any): string[] {
+  if (Array.isArray(value)) {
+    return value.map(String).filter(Boolean)
+  }
+  if (typeof value === 'string' && value.length > 0) {
+    return [value]
+  }
+  return []
+}
+
+function extractFields(row: ApiMatchRow): string[] {
+  if (Array.isArray(row.fields) && row.fields.length) {
+    return row.fields.map(String)
+  }
+  return extractArray(row.metadata?.fields_of_study)
+}
+
+function extractCountries(row: ApiMatchRow): string[] {
+  const meta = row.metadata || {}
+  const fromMeta = extractArray((meta as any).country_eligibility)
+  if (fromMeta.length) return fromMeta
+  if (row.country) return [row.country]
+  const source = typeof (meta as any).source_country === 'string' ? (meta as any).source_country : null
+  return source ? [source] : []
+}
+
+function computeWorkload(
+  row: ApiMatchRow,
+): { label: 'Light' | 'Medium' | 'Heavy'; text: string } {
+  const components = row.metadata?.application_components
+  if (!components || typeof components !== 'object') {
+    return { label: 'Medium', text: 'See components' }
+  }
+
+  const essays = Number(components.essays ?? 0)
+  const refs = Number(components.reference_letters ?? 0)
+  const transcript = Boolean(components.transcript_required)
+  const resume = Boolean(components.resume_required)
+  const portfolio = Boolean(components.portfolio_required)
+  const interview = Boolean(components.interview_possible)
+
+  const flags = [
+    essays ? `${essays} essay${essays === 1 ? '' : 's'}` : null,
+    refs ? `${refs} rec${refs === 1 ? '' : 's'}` : null,
+    transcript ? 'Transcript' : null,
+    resume ? 'Resume' : null,
+    portfolio ? 'Portfolio' : null,
+    interview ? 'Interview' : null,
+  ].filter(Boolean) as string[]
+
+  let label: 'Light' | 'Medium' | 'Heavy' = 'Medium'
+  if (essays >= 2 || refs >= 2 || (essays >= 1 && refs >= 1)) {
+    label = 'Heavy'
+  } else if (essays === 0 && refs === 0 && !transcript && !resume && !portfolio) {
+    label = 'Light'
+  }
+
+  return {
+    label,
+    text: flags.length > 0 ? flags.join(' • ') : 'Short form',
+  }
+}
+
+function computeMatchScore(row: ApiMatchRow, fallbackIndex: number) {
+  if (typeof row.distance === 'number') {
+    const d = Math.min(Math.max(row.distance, 0), 2)
+    const score = Math.round((1 - d / 2) * 100)
+    return Math.max(0, Math.min(100, score))
+  }
+  if (typeof row.dot_sim === 'number') {
+    const sim = Math.max(-1, Math.min(1, row.dot_sim))
+    const score = Math.round(((sim + 1) / 2) * 100)
+    return Math.max(0, Math.min(100, score))
+  }
+  return Math.max(0, Math.min(100, 70 - fallbackIndex))
 }
 
 function FiltersContent() {

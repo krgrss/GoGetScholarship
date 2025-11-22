@@ -70,6 +70,70 @@ export type EligibilityFilter = {
   demographicSelf?: string[]
 }
 
+const GENDER_TAG_MAPPINGS: { matches: string[]; outputs: string[] }[] = [
+  {
+    matches: ['female', 'woman', 'women', 'female_identifying', 'woman_identifying', 'girl', 'girls', 'womxn'],
+    outputs: ['women', 'female'],
+  },
+  {
+    matches: ['male', 'man', 'men', 'male_identifying'],
+    outputs: ['men', 'male'],
+  },
+  {
+    matches: ['nonbinary', 'non_binary', 'non-binary', 'genderqueer', 'genderfluid', 'gender_fluid', 'gender_nonconforming'],
+    outputs: ['non_binary'],
+  },
+]
+
+const ETHNICITY_TAG_MAPPINGS: { matches: string[]; outputs: string[] }[] = [
+  {
+    matches: ['black', 'african_american', 'africanamerican', 'african-american', 'black_or_african_american'],
+    outputs: ['black', 'african_american'],
+  },
+  {
+    matches: ['indigenous', 'indigenous_identity', 'first_nations', 'first_nation', 'native_american', 'nativeamerican', 'native', 'inuit', 'metis', 'first_peoples'],
+    outputs: ['indigenous', 'indigenous_identity'],
+  },
+  {
+    matches: ['hispanic', 'latino', 'latina', 'latinx', 'latino_a'],
+    outputs: ['hispanic', 'latino'],
+  },
+]
+
+function normalizeDemographicValue(value?: string | null): string | null {
+  if (!value || typeof value !== 'string') return null
+  const normalized = value.trim().toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '')
+  return normalized || null
+}
+
+function deriveDemographicTags(eligibility?: EligibilityFilter): string[] {
+  const tags = new Set<string>()
+
+  // Explicit self-identified tags from the caller take priority (use as-is once normalized).
+  for (const tag of eligibility?.demographicSelf ?? []) {
+    const normalized = normalizeDemographicValue(tag)
+    if (normalized) tags.add(normalized)
+  }
+
+  const gender = normalizeDemographicValue(eligibility?.gender)
+  if (gender) {
+    const mapping = GENDER_TAG_MAPPINGS.find((m) => m.matches.includes(gender))
+    if (mapping) {
+      mapping.outputs.forEach((t) => tags.add(t))
+    }
+  }
+
+  const ethnicity = normalizeDemographicValue(eligibility?.ethnicity)
+  if (ethnicity) {
+    const mapping = ETHNICITY_TAG_MAPPINGS.find((m) => m.matches.includes(ethnicity))
+    if (mapping) {
+      mapping.outputs.forEach((t) => tags.add(t))
+    }
+  }
+
+  return Array.from(tags)
+}
+
 /** Negative inner product (dot product) distance query with pgvector */
 export async function topKByEmbedding(
   queryEmbedding: number[],
@@ -94,14 +158,14 @@ export async function topKByEmbedding(
     eligibility?.fieldsOfStudy ?? null, // $6
     eligibility?.citizenship ?? null, // $7
     typeof eligibility?.hasFinancialNeed === 'boolean' ? eligibility.hasFinancialNeed : null, // $8
-    eligibility?.demographicSelf ?? [], // $9 (Array of student's tags)
+    deriveDemographicTags(eligibility), // $9 (Student demographic tags derived from demographicSelf + gender/ethnicity)
   ]
 
   // Use negative inner product operator `<#>` and HNSW index on vector_ip_ops
   // (see pgvector docs). Hard filters are applied using both top-level columns
   // and metadata JSON where applicable.
   const sql = `
-    select s.id, s.name, s.url, s.min_gpa,
+    select s.id, s.name, s.url, s.min_gpa, s.fields, s.metadata,
            (e.embedding <#> $1::vector) as distance,
            -(e.embedding <#> $1::vector) as dot_sim
     from scholarships s
@@ -162,7 +226,8 @@ export async function topKByEmbedding(
       -- 3. OR The scholarship's requirements DO NOT contain any "Hard Constraints" that the student lacks.
       --    (We define a list of hard constraints like 'women', 'indigenous', 'black', etc.)
       and (
-        not (s.metadata ? 'demographic_eligibility')
+        coalesce(cardinality($9::text[]), 0) = 0 -- if no demographic tags provided, skip the hard filter
+        or not (s.metadata ? 'demographic_eligibility')
         or jsonb_array_length(s.metadata->'demographic_eligibility') = 0
         or s.metadata->'demographic_eligibility' ? 'none_specified'
         -- Student matches at least one requirement

@@ -1,6 +1,9 @@
 import * as React from 'react'
 import { createFileRoute } from '@tanstack/react-router'
 import { Activity, AlertTriangle, CheckCircle2 } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 
 type TelemetryEvent = {
   step: string
@@ -24,6 +27,12 @@ function DebugPage() {
   const [events, setEvents] = React.useState<TelemetryEvent[]>([])
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  const [adminKey, setAdminKey] = React.useState<string>(() => {
+    if (typeof window === 'undefined') return ''
+    return localStorage.getItem('admin_key') || ''
+  })
+  const [students, setStudents] = React.useState<any[]>([])
+  const [studentsError, setStudentsError] = React.useState<string | null>(null)
 
   async function load() {
     setLoading(true)
@@ -45,6 +54,25 @@ function DebugPage() {
   React.useEffect(() => {
     void load()
   }, [])
+
+  async function loadStudents() {
+    setStudentsError(null)
+    try {
+      const res = await fetch('/api/admin/students', {
+        headers: adminKey ? { 'admin-api-key': adminKey } : undefined,
+      })
+      const data = await res.json()
+      if (!res.ok || !data.ok) {
+        throw new Error(data?.error || `Request failed (${res.status})`)
+      }
+      setStudents(data.students || [])
+      if (adminKey) {
+        localStorage.setItem('admin_key', adminKey)
+      }
+    } catch (e: any) {
+      setStudentsError(String(e.message || e))
+    }
+  }
 
   const pipelineEvents = events.filter((e) => e.step === 'pipeline')
 
@@ -109,6 +137,60 @@ function DebugPage() {
             tone={errorCount > 0 ? 'error' : 'ok'}
           />
         </section>
+
+        <Card className="rounded-2xl bg-card shadow-sm ring-1 ring-border">
+          <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-1">
+              <CardTitle className="text-sm font-semibold">Admin backdoor: students</CardTitle>
+              <p className="text-[11px] text-muted-foreground">
+                Provide the admin key to list recent student profiles saved via onboarding/profile.
+              </p>
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                value={adminKey}
+                onChange={(e) => setAdminKey(e.target.value)}
+                placeholder="Admin key"
+                className="h-8 w-48 text-xs"
+              />
+              <Button size="sm" className="h-8" onClick={loadStudents}>
+                Load students
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-2">
+            {studentsError && (
+              <p className="rounded-md bg-destructive/10 px-3 py-2 text-xs text-destructive">
+                {studentsError}
+              </p>
+            )}
+            {students.length === 0 && !studentsError && (
+              <p className="text-xs text-muted-foreground">No students loaded yet.</p>
+            )}
+            {students.length > 0 && (
+              <div className="max-h-72 space-y-2 overflow-auto rounded-lg bg-background/60 p-2 text-xs ring-1 ring-border">
+                {students.map((s) => (
+                  <div
+                    key={s.id}
+                    className="rounded-md border border-border bg-background/80 p-2"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <div className="font-medium text-foreground">{s.name || '(no name)'}</div>
+                      <span className="text-[10px] text-muted-foreground">{s.id}</span>
+                    </div>
+                    <div className="mt-1 text-[11px] text-muted-foreground">
+                      {s.major || 'unknown major'} • {s.country || 'unknown country'} • GPA:{' '}
+                      {s.gpa ?? 'n/a'}
+                    </div>
+                    <div className="mt-1 whitespace-pre-wrap text-[11px] text-muted-foreground">
+                      {s.summary || '(no summary)'}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
         <section
           aria-label="Recent events"
@@ -205,4 +287,3 @@ function SummaryTile(props: {
     </div>
   )
 }
-

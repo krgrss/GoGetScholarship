@@ -7,7 +7,6 @@ import {
   Network,
   SunMedium,
   User,
-  X,
 } from 'lucide-react'
 import { Link } from '@tanstack/react-router'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -144,7 +143,13 @@ export default function Header() {
         <div className="flex items-center gap-3">
           <Link to="/onboarding">
             <Avatar className="h-8 w-8 border border-border transition hover:ring-2 hover:ring-primary/20">
-              <AvatarImage src="/placeholder-user.jpg" alt="User" />
+              <AvatarImage
+                src="https://placehold.co/64x64?text=ME"
+                alt="User"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                }}
+              />
               <AvatarFallback className="bg-muted text-xs font-medium text-muted-foreground">
                 ME
               </AvatarFallback>

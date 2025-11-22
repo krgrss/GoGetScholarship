@@ -2,6 +2,42 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { pool } from '@/server/db'
 
+function deriveWorkload(meta: any): { label: 'Light' | 'Medium' | 'Heavy'; items: string[] } {
+  const components = meta?.application_components || {}
+  const items: string[] = []
+  let score = 0
+  const essays = Number(components.essays ?? 0)
+  const refs = Number(components.reference_letters ?? 0)
+  if (essays) {
+    items.push(`${essays} essay${essays === 1 ? '' : 's'}`)
+    score += essays * 2
+  }
+  if (refs) {
+    items.push(`${refs} rec${refs === 1 ? '' : 's'}`)
+    score += refs
+  }
+  if (components.transcript_required) {
+    items.push('Transcript')
+    score += 1
+  }
+  if (components.resume_required) {
+    items.push('Resume')
+    score += 1
+  }
+  if (components.portfolio_required) {
+    items.push('Portfolio')
+    score += 2
+  }
+  if (components.interview_possible) {
+    items.push('Interview')
+    score += 2
+  }
+  let label: 'Light' | 'Medium' | 'Heavy' = 'Medium'
+  if (score <= 2) label = 'Light'
+  else if (score >= 5) label = 'Heavy'
+  return { label, items }
+}
+
 export const Route = createFileRoute('/api/dashboard')({
   server: {
     handlers: {
@@ -77,6 +113,11 @@ export const Route = createFileRoute('/api/dashboard')({
               (typeof meta.provider_name === 'string' ? meta.provider_name : null) ||
               'Unknown provider'
 
+            const workload = deriveWorkload(meta)
+            let readiness: 'needs_work' | 'solid' | 'ready' = 'needs_work'
+            if (progress >= 80) readiness = 'ready'
+            else if (progress >= 50) readiness = 'solid'
+
             return {
               id: r.scholarship_id,
               draftId: r.draft_id,
@@ -85,8 +126,10 @@ export const Route = createFileRoute('/api/dashboard')({
               deadline: deadlineLabel,
               status: isSubmitted ? 'Submitted' : 'In Progress',
               progress,
-              readiness: progress > 80 ? 'High' : progress > 40 ? 'Medium' : 'Low',
+              readiness,
               nextAction: isSubmitted ? 'Wait for Decision' : 'Continue Drafting',
+              workloadLabel: workload.label,
+              workloadItems: workload.items,
             }
           })
 

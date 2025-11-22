@@ -13,10 +13,12 @@ import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as OnboardingRouteImport } from './routes/onboarding'
 import { Route as MatchesRouteImport } from './routes/matches'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as CustomRouteImport } from './routes/custom'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ScholarshipIdRouteImport } from './routes/scholarship/$id'
 import { Route as EssayIdRouteImport } from './routes/essay/$id'
 import { Route as ApiRubricRouteImport } from './routes/api/rubric'
+import { Route as ApiReviseRouteImport } from './routes/api/revise'
 import { Route as ApiRetrieveRouteImport } from './routes/api/retrieve'
 import { Route as ApiResearchRouteImport } from './routes/api/research'
 import { Route as ApiRerankRouteImport } from './routes/api/rerank'
@@ -35,6 +37,7 @@ import { Route as ApiClaudeHealthRouteImport } from './routes/api/claude-health'
 import { Route as AdminDebugRouteImport } from './routes/admin/debug'
 import { Route as ApiScholarshipIdRouteImport } from './routes/api/scholarship/$id'
 import { Route as ApiAdminTelemetryRouteImport } from './routes/api/admin/telemetry'
+import { Route as ApiAdminStudentsRouteImport } from './routes/api/admin/students'
 
 const ProfileRoute = ProfileRouteImport.update({
   id: '/profile',
@@ -56,6 +59,11 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CustomRoute = CustomRouteImport.update({
+  id: '/custom',
+  path: '/custom',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
@@ -74,6 +82,11 @@ const EssayIdRoute = EssayIdRouteImport.update({
 const ApiRubricRoute = ApiRubricRouteImport.update({
   id: '/api/rubric',
   path: '/api/rubric',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiReviseRoute = ApiReviseRouteImport.update({
+  id: '/api/revise',
+  path: '/api/revise',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ApiRetrieveRoute = ApiRetrieveRouteImport.update({
@@ -166,9 +179,15 @@ const ApiAdminTelemetryRoute = ApiAdminTelemetryRouteImport.update({
   path: '/api/admin/telemetry',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAdminStudentsRoute = ApiAdminStudentsRouteImport.update({
+  id: '/api/admin/students',
+  path: '/api/admin/students',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/custom': typeof CustomRoute
   '/dashboard': typeof DashboardRoute
   '/matches': typeof MatchesRoute
   '/onboarding': typeof OnboardingRoute
@@ -189,14 +208,17 @@ export interface FileRoutesByFullPath {
   '/api/rerank': typeof ApiRerankRoute
   '/api/research': typeof ApiResearchRoute
   '/api/retrieve': typeof ApiRetrieveRoute
+  '/api/revise': typeof ApiReviseRoute
   '/api/rubric': typeof ApiRubricRoute
   '/essay/$id': typeof EssayIdRoute
   '/scholarship/$id': typeof ScholarshipIdRoute
+  '/api/admin/students': typeof ApiAdminStudentsRoute
   '/api/admin/telemetry': typeof ApiAdminTelemetryRoute
   '/api/scholarship/$id': typeof ApiScholarshipIdRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/custom': typeof CustomRoute
   '/dashboard': typeof DashboardRoute
   '/matches': typeof MatchesRoute
   '/onboarding': typeof OnboardingRoute
@@ -217,15 +239,18 @@ export interface FileRoutesByTo {
   '/api/rerank': typeof ApiRerankRoute
   '/api/research': typeof ApiResearchRoute
   '/api/retrieve': typeof ApiRetrieveRoute
+  '/api/revise': typeof ApiReviseRoute
   '/api/rubric': typeof ApiRubricRoute
   '/essay/$id': typeof EssayIdRoute
   '/scholarship/$id': typeof ScholarshipIdRoute
+  '/api/admin/students': typeof ApiAdminStudentsRoute
   '/api/admin/telemetry': typeof ApiAdminTelemetryRoute
   '/api/scholarship/$id': typeof ApiScholarshipIdRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/custom': typeof CustomRoute
   '/dashboard': typeof DashboardRoute
   '/matches': typeof MatchesRoute
   '/onboarding': typeof OnboardingRoute
@@ -246,9 +271,11 @@ export interface FileRoutesById {
   '/api/rerank': typeof ApiRerankRoute
   '/api/research': typeof ApiResearchRoute
   '/api/retrieve': typeof ApiRetrieveRoute
+  '/api/revise': typeof ApiReviseRoute
   '/api/rubric': typeof ApiRubricRoute
   '/essay/$id': typeof EssayIdRoute
   '/scholarship/$id': typeof ScholarshipIdRoute
+  '/api/admin/students': typeof ApiAdminStudentsRoute
   '/api/admin/telemetry': typeof ApiAdminTelemetryRoute
   '/api/scholarship/$id': typeof ApiScholarshipIdRoute
 }
@@ -256,6 +283,7 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/custom'
     | '/dashboard'
     | '/matches'
     | '/onboarding'
@@ -276,14 +304,17 @@ export interface FileRouteTypes {
     | '/api/rerank'
     | '/api/research'
     | '/api/retrieve'
+    | '/api/revise'
     | '/api/rubric'
     | '/essay/$id'
     | '/scholarship/$id'
+    | '/api/admin/students'
     | '/api/admin/telemetry'
     | '/api/scholarship/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/custom'
     | '/dashboard'
     | '/matches'
     | '/onboarding'
@@ -304,14 +335,17 @@ export interface FileRouteTypes {
     | '/api/rerank'
     | '/api/research'
     | '/api/retrieve'
+    | '/api/revise'
     | '/api/rubric'
     | '/essay/$id'
     | '/scholarship/$id'
+    | '/api/admin/students'
     | '/api/admin/telemetry'
     | '/api/scholarship/$id'
   id:
     | '__root__'
     | '/'
+    | '/custom'
     | '/dashboard'
     | '/matches'
     | '/onboarding'
@@ -332,15 +366,18 @@ export interface FileRouteTypes {
     | '/api/rerank'
     | '/api/research'
     | '/api/retrieve'
+    | '/api/revise'
     | '/api/rubric'
     | '/essay/$id'
     | '/scholarship/$id'
+    | '/api/admin/students'
     | '/api/admin/telemetry'
     | '/api/scholarship/$id'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CustomRoute: typeof CustomRoute
   DashboardRoute: typeof DashboardRoute
   MatchesRoute: typeof MatchesRoute
   OnboardingRoute: typeof OnboardingRoute
@@ -361,9 +398,11 @@ export interface RootRouteChildren {
   ApiRerankRoute: typeof ApiRerankRoute
   ApiResearchRoute: typeof ApiResearchRoute
   ApiRetrieveRoute: typeof ApiRetrieveRoute
+  ApiReviseRoute: typeof ApiReviseRoute
   ApiRubricRoute: typeof ApiRubricRoute
   EssayIdRoute: typeof EssayIdRoute
   ScholarshipIdRoute: typeof ScholarshipIdRoute
+  ApiAdminStudentsRoute: typeof ApiAdminStudentsRoute
   ApiAdminTelemetryRoute: typeof ApiAdminTelemetryRoute
   ApiScholarshipIdRoute: typeof ApiScholarshipIdRoute
 }
@@ -398,6 +437,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/custom': {
+      id: '/custom'
+      path: '/custom'
+      fullPath: '/custom'
+      preLoaderRoute: typeof CustomRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -424,6 +470,13 @@ declare module '@tanstack/react-router' {
       path: '/api/rubric'
       fullPath: '/api/rubric'
       preLoaderRoute: typeof ApiRubricRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/revise': {
+      id: '/api/revise'
+      path: '/api/revise'
+      fullPath: '/api/revise'
+      preLoaderRoute: typeof ApiReviseRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/retrieve': {
@@ -552,11 +605,19 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiAdminTelemetryRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/admin/students': {
+      id: '/api/admin/students'
+      path: '/api/admin/students'
+      fullPath: '/api/admin/students'
+      preLoaderRoute: typeof ApiAdminStudentsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CustomRoute: CustomRoute,
   DashboardRoute: DashboardRoute,
   MatchesRoute: MatchesRoute,
   OnboardingRoute: OnboardingRoute,
@@ -577,9 +638,11 @@ const rootRouteChildren: RootRouteChildren = {
   ApiRerankRoute: ApiRerankRoute,
   ApiResearchRoute: ApiResearchRoute,
   ApiRetrieveRoute: ApiRetrieveRoute,
+  ApiReviseRoute: ApiReviseRoute,
   ApiRubricRoute: ApiRubricRoute,
   EssayIdRoute: EssayIdRoute,
   ScholarshipIdRoute: ScholarshipIdRoute,
+  ApiAdminStudentsRoute: ApiAdminStudentsRoute,
   ApiAdminTelemetryRoute: ApiAdminTelemetryRoute,
   ApiScholarshipIdRoute: ApiScholarshipIdRoute,
 }

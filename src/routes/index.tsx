@@ -1,5 +1,5 @@
-import { createFileRoute, Link, useNavigate } from '@tanstack/react-router'
-import { ArrowRight, BookOpen, CheckCircle2, FileEdit, Search, User } from 'lucide-react'
+import { createFileRoute, Link } from '@tanstack/react-router'
+import { ArrowRight, BookOpen, FileEdit, Search, User } from 'lucide-react'
 import * as React from 'react'
 
 import { Button } from '@/components/ui/button'
@@ -10,7 +10,6 @@ export const Route = createFileRoute('/')({
 })
 
 function HomePage() {
-  const navigate = useNavigate()
   const [hasProfile, setHasProfile] = React.useState(false)
 
   React.useEffect(() => {
@@ -44,36 +43,80 @@ function HomePage() {
               </Link>
             </Button>
             <Button size="lg" variant="outline" className="h-12 px-8 text-base" asChild>
-              <Link to="/matches">
-                Browse Scholarships
-              </Link>
+              <Link to="/profile">Go to Profile</Link>
             </Button>
           </div>
         </section>
 
-        <section className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
-          <StepCard
-            icon={<User className="h-6 w-6 text-blue-500" />}
-            title="1. Profile"
-            description="Tell us about your background, grades, and interests."
-            active={!hasProfile}
-          />
-          <StepCard
-            icon={<Search className="h-6 w-6 text-amber-500" />}
-            title="2. Matches"
-            description="Get a curated list of scholarships you can actually win."
-            active={hasProfile}
-          />
-          <StepCard
-            icon={<BookOpen className="h-6 w-6 text-green-500" />}
-            title="3. Detail"
-            description="Understand the rubric and what the sponsor cares about."
-          />
-          <StepCard
-            icon={<FileEdit className="h-6 w-6 text-purple-500" />}
-            title="4. Draft"
-            description="Use AI to draft, grade, and refine your essays."
-          />
+        <section className="space-y-4">
+          <div className="rounded-xl border bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+            Follow the core flow: <strong>Profile → Matches → Scholarship → Draft & Grade</strong>. Start with your profile to unlock personalized matches, then open a scholarship to view details and draft.
+          </div>
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <StepCard
+              icon={<User className="h-6 w-6 text-blue-500" />}
+              title="1. Profile"
+              description="Tell us about your background, grades, and interests."
+              active={!hasProfile}
+            />
+            <StepCard
+              icon={<Search className="h-6 w-6 text-amber-500" />}
+              title="2. Matches"
+              description="Get a curated list of scholarships you can actually win."
+              active={hasProfile}
+            />
+            <StepCard
+              icon={<BookOpen className="h-6 w-6 text-green-500" />}
+              title="3. Detail"
+              description="Open a scholarship, see rubric, and what the sponsor cares about."
+            />
+            <StepCard
+              icon={<FileEdit className="h-6 w-6 text-purple-500" />}
+              title="4. Draft & Grade"
+              description="Use AI to draft, grade, and refine your essays with feedback."
+            />
+          </div>
+        </section>
+
+        <section className="grid gap-4 md:grid-cols-3">
+          {[
+            {
+              step: 'Step 1',
+              title: 'Create your profile',
+              description:
+                'Fill onboarding with academics, activities, and background so we can match you.',
+              cta: hasProfile ? { label: 'View profile', to: '/profile' } : { label: 'Start now', to: '/onboarding' },
+            },
+            {
+              step: 'Step 2',
+              title: 'Get your matches',
+              description:
+                'See eligible scholarships and open one to review requirements and rubric.',
+              cta: { label: 'Go to matches', to: '/matches' },
+            },
+            {
+              step: 'Step 3',
+              title: 'Draft & grade',
+              description:
+                'Generate a tailored essay, grade it, and iterate until ready to submit.',
+              cta: { label: 'Open a scholarship', to: '/matches' },
+            },
+          ].map((item) => (
+            <Card key={item.title} className="h-full">
+              <CardHeader className="space-y-2">
+                <div className="text-xs font-semibold uppercase text-primary">{item.step}</div>
+                <CardTitle className="text-lg">{item.title}</CardTitle>
+              </CardHeader>
+              <CardContent className="flex h-full flex-col justify-between space-y-4">
+                <p className="text-sm text-muted-foreground">{item.description}</p>
+                <div>
+                  <Button size="sm" asChild>
+                    <Link to={item.cta.to}>{item.cta.label}</Link>
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
         </section>
 
         {hasProfile && (

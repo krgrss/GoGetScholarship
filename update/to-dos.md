@@ -4,44 +4,44 @@
 
 ### **BUG #1: Onboarding Never Saves to Database** 🔴 CRITICAL
 
-- [ ] **Replace fake API call with real `/api/profile` POST** in `src/routes/onboarding.tsx`
-  - [ ] Remove lines 102-103 (fake `setTimeout` delay)
-  - [ ] Add real API call pattern from `src/routes/profile.tsx` lines 43-64
-  - [ ] Must POST to `/api/profile` with: `summary`, `name`, `gpa`, `major`, `country`, `metadata`
-  - [ ] Must save returned `student_id` to `localStorage.setItem('scholarship_student_id', student_id)`
-  - [ ] Keep existing localStorage save for `scholarship_profile` for backward compatibility
+- [x] **Replace fake API call with real `/api/profile` POST** in `src/routes/onboarding.tsx`
+  - [x] Remove lines 102-103 (fake `setTimeout` delay)
+  - [x] Add real API call pattern from `src/routes/profile.tsx` lines 43-64
+  - [x] Must POST to `/api/profile` with: `summary`, `name`, `gpa`, `major`, `country`, `metadata`
+  - [x] Must save returned `student_id` to `localStorage.setItem('scholarship_student_id', student_id)`
+  - [x] Keep existing localStorage save for `scholarship_profile` for backward compatibility
 - [ ] **Verify fix works**: Complete onboarding → check database for new row in `students` table
 
 ### **BUG #2: Matches Page Uses Mock Data** 🔴 CRITICAL
 
 - [ ] **Replace MOCK_MATCHES with real API call** in `src/routes/matches.tsx`
-  - [ ] Remove hardcoded `MOCK_MATCHES` array (lines 59-115)
-  - [ ] Add `useEffect` to fetch from `/api/match` on page load
-  - [ ] Get `student_summary` from `localStorage.getItem('scholarship_profile')`
-  - [ ] Call `/api/match` with `{ student_summary, k: 20 }`
-  - [ ] Map API response to `MatchCard[]` format
-  - [ ] Keep MOCK_MATCHES as fallback ONLY for error states
-- [ ] **Add Browse All mode**: Fetch all scholarships without profile filter
-- [ ] **Add "Find My Match" button**: Toggle between Browse All and profile-matched
+  - [x] Remove hardcoded `MOCK_MATCHES` array (lines 59-115)
+  - [x] Add `useEffect` to fetch from `/api/match` on page load
+  - [x] Get `student_summary` from `localStorage.getItem('scholarship_profile')`
+  - [x] Call `/api/match` with `{ student_summary, k: 20 }`
+  - [x] Map API response to `MatchCard[]` format
+  - [x] Keep MOCK_MATCHES as fallback ONLY for error states
+- [x] **Add Browse All mode**: Fetch all scholarships without profile filter
+- [x] **Add "Find My Match" button**: Toggle between Browse All and profile-matched
 
 ### **BUG #3: Dashboard Shows Mock Data** 🟡 MEDIUM
 
-- [ ] **Wire dashboard to real data** in `src/routes/dashboard.tsx`
-  - [ ] Replace `kpiData` (lines 52-77) with real stats from database
-  - [ ] Replace `applications` (lines 79-120) with user's actual applications
-  - [ ] Replace `suggestions` (lines 122-135) with real "low extra work" analysis
-- [ ] **For now**: Show message "Dashboard coming soon" or hide the page
+- [x] **Wire dashboard to real data** in `src/routes/dashboard.tsx`
+  - [x] Replace `kpiData` (lines 52-77) with real stats from database
+  - [x] Replace `applications` (lines 79-120) with user's actual applications
+  - [x] Replace `suggestions` (lines 122-135) with real "low extra work" analysis
+- [x] **For now**: Show message "Dashboard coming soon" or hide the page
 
 ### **BUG #4: Dashboard Route Wrong** 🟢 LOW
 
-- [ ] **Fix link** in `src/components/Header.tsx` line 63
-  - [ ] Change `to="/"` to `to="/dashboard"`
+- [x] **Fix link** in `src/components/Header.tsx` line 63
+  - [x] Change `to="/"` to `to="/dashboard"`
 
 ### **BUG #5: Onboarding Auto-Skip** 🟡 MEDIUM
 
-- [ ] **Check 'about' step** in `src/routes/onboarding.tsx` around lines 36-40
-  - [ ] Remove `optional: true` flag if present on 'about' step
-  - [ ] Test that final step doesn't auto-skip
+- [x] **Check 'about' step** in `src/routes/onboarding.tsx` around lines 36-40
+  - [x] Remove `optional: true` flag if present on 'about' step
+  - [x] Test that final step doesn't auto-skip (skip button hidden on last step)
 
 ---
 
@@ -53,39 +53,39 @@
 
 ## 1. Demo Happy Path (High Priority)
 
-- [ ] Create a guided landing/dashboard on `/` with clear steps: **Profile → Matches → Scholarship → Draft & Grade**.
-- [ ] Add a prominent link/button on `/` to `/profile` (e.g., "Start with your profile").
+- [x] Create a guided landing/dashboard on `/` with clear steps: **Profile ? Matches ? Scholarship ? Draft & Grade**.
+- [x] Add a prominent link/button on `/` to `/profile` (e.g., "Start with your profile").
 - [ ] Smoke-test the full flow with 2-3 curated profiles and scholarships (no errors, reasonable latency).
-- [ ] Clarify the guided flow text as: Profile → Matches → Scholarship → Draft, and explicitly mention updating CTAs/copy in `src/routes/index.tsx`.
+- [x] Clarify the guided flow text as: Profile ? Matches ? Scholarship ? Draft, and explicitly mention updating CTAs/copy in `src/routes/index.tsx`.
 
 ## 2. Smooth UX & Polish
 
-- [ ] Add loading states (spinners or skeletons) for onboarding submit, matches fetch, and scholarship detail load so the user never sees confusing blank screens.
+- [x] Add loading states (spinners or skeletons) for onboarding submit, matches fetch, and scholarship detail load so the user never sees confusing blank screens.
 - [ ] Make sure all critical actions (submit profile, generate draft, grade essay, explain fit) show clear success/error toasts and never leave the user wondering what happened.
 - [ ] Double-check keyboard navigation and focus handling on the main flow (onboarding → matches → scholarship → draft/grade) so the demo looks accessible and well-considered.
 - [ ] Do at least one full “walkthrough” pass from a judge’s perspective and fix any awkward copy, layout jumps, or confusing labels before recording the video.
 
 ## 3. Profile & Matching
 
-- [ ] Lightly polish the `/profile` layout so the new fields (education level, status, identity, need) feel grouped and readable.
-- [ ] Verify `student_summary` looks clean for 2-3 example inputs (no duplicated or noisy lines).
-- [ ] Ensure `/api/match` + `/api/rerank` still perform well with the richer summary (no obvious irrelevant top results).
-- [ ] Confirm `/onboarding` successfully persists to `/api/profile` and that `scholarship_student_id` is available for downstream APIs.
-- [ ] Replace remaining uses of `MOCK_MATCHES` by wiring `/matches` fully to `/api/match` (keep a small static fallback only for error states).
-- [ ] Add a checkbox in the evaluation checklist to explicitly run `/api/retrieve` + `/api/match` + `/api/rerank` in tests (not just `/api/match`).
-- [ ] Add a checkbox to compute and record `good@10` / `(good+meh)@10` for 3 demo profiles directly into `docs/evaluation-metrics.md`.
+- [x] Lightly polish the `/profile` layout so the new fields (education level, status, identity, need) feel grouped and readable.
+- [x] Verify `student_summary` looks clean for 2-3 example inputs (no duplicated or noisy lines).
+- [x] Ensure `/api/match` + `/api/rerank` still perform well with the richer summary (no obvious irrelevant top results).
+- [x] Confirm `/onboarding` successfully persists to `/api/profile` and that `scholarship_student_id` is available for downstream APIs.
+- [x] Replace remaining uses of `MOCK_MATCHES` by wiring `/matches` fully to `/api/match` (keep a small static fallback only for error states).
+- [x] Add a checkbox in the evaluation checklist to explicitly run `/api/retrieve` + `/api/match` + `/api/rerank` in tests (not just `/api/match`).
+- [x] Add a checkbox to compute and record `good@10` / `(good+meh)@10` for 3 demo profiles directly into `docs/evaluation-metrics.md`.
 - [x] Update `/api/profile` and backing tables toward the documented `student_profiles` shape (level_of_study, fields_of_study, gpa_scale, demographic_self, profile_summary + embedding) so future work can swap to that cleanly.
 
 ## 4. Scholarship Detail & Drafting
 
-- [ ] For 3-5 demo scholarships, run `/api/personality` and store profiles so the sidebar and drafts are well-targeted.
-- [ ] For the same scholarships, define and save rubrics via `/api/rubric` that match their prompts/values.
-- [ ] On `/scholarship/$id`, confirm:
-  - [ ] The hard-coded mock scholarship object in `src/routes/scholarship/$id.tsx` is replaced with real data from `/api/scholarship/$id` (at least for the gold demo IDs).
-  - [ ] Personality section loads correctly (weights, themes, tone).
-  - [ ] Draft generation with `/api/draft` works for the demo profiles.
-  - [ ] Rubric grading (`/api/grade-essay`) produces clear, non-buggy feedback.
-  - [ ] For 2-3 "gold" scholarships, verify rubric + explain-fit + drafting + grading all work together end-to-end (single scholarship where every AI feature is turned on).
+- [x] For 3-5 demo scholarships, run `/api/personality` and store profiles so the sidebar and drafts are well-targeted.
+- [x] For the same scholarships, define and save rubrics via `/api/rubric` that match their prompts/values.
+- [x] On `/scholarship/$id`, confirm:
+  - [x] The hard-coded mock scholarship object in `src/routes/scholarship/$id.tsx` is replaced with real data from `/api/scholarship/$id` (at least for the gold demo IDs).
+  - [x] Personality section loads correctly (weights, themes, tone).
+  - [x] Draft generation with `/api/draft` works for the demo profiles.
+  - [x] Rubric grading (`/api/grade-essay`) produces clear, non-buggy feedback.
+  - [x] For 2-3 "gold" scholarships, verify rubric + explain-fit + drafting + grading all work together end-to-end (single scholarship where every AI feature is turned on).
 
 ## 5. "Why This Fits You" Explanation
 
@@ -125,42 +125,42 @@
 
 ## 10. Matches Page & Cards
 
-- [ ] Ensure the `Matches` screen reads from `/api/match` + `/api/rerank` and presents results as cards (no lingering mock-only cards beyond fallback).
-- [ ] Add eligibility and demographic focus chips on each card (e.g., level, country, priority demographics) using existing scholarship metadata/personality.
-- [ ] Include a lightweight workload indicator on cards (e.g., "Essay + Recs" vs "Short form") based on available components metadata or a simple heuristic.
+- [x] Ensure the `Matches` screen reads from `/api/match` + `/api/rerank` and presents results as cards (no lingering mock-only cards beyond fallback).
+- [x] Add eligibility and demographic focus chips on each card (e.g., level, country, priority demographics) using existing scholarship metadata/personality.
+- [x] Include a lightweight workload indicator on cards (e.g., "Essay + Recs" vs "Short form") based on available components metadata or a simple heuristic.
 
 ## 11. Planner & Workload Modeling
 
-- [ ] Decide where to store application components/workload (e.g., in `scholarships.metadata` or the planner tables described in `docs/db-requirements.md`).
-- [ ] Implement a simple per-scholarship task list on `/scholarship/$id` (e.g., "Essay", "Recs", "Transcript") and mark completion in local state for the demo.
-- [ ] If time allows, surface a rough workload chip ("Light / Medium / Heavy") derived from the components on both matches cards and the scholarship page.
+- [x] Decide where to store application components/workload (using `scholarships.metadata` for the demo).
+- [x] Implement a simple per-scholarship task list on `/scholarship/$id` (e.g., "Essay", "Recs", "Transcript") and mark completion in local state for the demo.
+- [x] If time allows, surface a rough workload chip ("Light / Medium / Heavy") derived from the components on both matches cards and the scholarship page.
 - [ ] Bring the scholarships data model in line with `docs/system-architecture.md` / `docs/db-requirements.md` (explicit deadline, level_of_study/fields_of_study arrays, country_eligibility/citizenship, demographic_focus, application_components/application_effort) so planner generation and workload chips have structured data to rely on.
 
 ## 12. Dashboard & Low Extra Work Suggestions
 
-- [ ] Create a minimal `/dashboard` route that shows scholarships the student has opened or drafted for (local/session-based is fine for hackathon).
-- [ ] Display readiness labels pulled from rubric grading (`needs_work` / `solid` / `ready`) for those scholarships.
-- [ ] Add a "Low extra work" suggestions section, even if heuristic (e.g., same field, similar prompt, and lower/equal workload than the main essay), and wire CTAs back into the scholarship detail page.
+- [x] Create a minimal `/dashboard` route that shows scholarships the student has opened or drafted for
+- [x] Display readiness labels pulled from rubric grading (`needs_work` / `solid` / `ready`) for those scholarships.
+- [x] Add a "Low extra work" suggestions section, even if heuristic (e.g., same field, similar prompt, and lower/equal workload than the main essay), and wire CTAs back into the scholarship detail page.
 
 ## 13. RubricCoach Revise Loop (MVP)
 
-- [ ] Add an API endpoint or extend existing routes to support "revise for criterion X" based on `/api/grade-essay` and the rubric.
-- [ ] On `/scholarship/$id`, let the user pick a weak criterion from the grading results and request a targeted revision.
-- [ ] Show original vs revised text for that section and allow the user to accept or discard the revision (no need for a multi-iteration loop yet).
+- [x] Add an API endpoint or extend existing routes to support "revise for criterion X" based on `/api/grade-essay` and the rubric.
+- [x] On `/scholarship/$id`, let the user pick a weak criterion from the grading results and request a targeted revision.
+- [x] Show original vs revised text for that section and allow the user to accept or discard the revision (no need for a multi-iteration loop yet).
 
 ## 14. LangGraph & Architecture Alignment (Stretch)
 
 - [ ] Sketch or stub LangGraph-style orchestrator functions (ExplainFitGraph, PlannerGraph, DraftEssayGraph, RubricCoachGraph) that wrap the existing APIs, even if they stay in-process for the hackathon.
 - [ ] Update `docs/system-architecture.md` and `docs/architecture_2.md` with any deviations between the original graph plan and the implemented API-based flows.
 
-## 15. Gemini UI Pass Alignment (New Branch)
+## 15. UI pass
 
-- [ ] Review the new home page (`/` in `src/routes/index.tsx`) against `docs/ui-3.md` and update copy/CTAs so the four-step strip explicitly matches the primary flow: **Profile → Matches → Scholarship → Draft & Grade** (including linking "Detail" and "Draft" steps to the actual routes).
-- [ ] Replace any remaining mock-only scholarships and matches in `src/routes/matches.tsx` and `src/routes/scholarship/$id.tsx` with real data from `/api/match` + `/api/scholarship/$id`, preserving the improved Shadcn-based layouts.
-- [ ] Wire the `Priority matches only` / `Hide ineligible` checkboxes in `src/routes/matches.tsx` to the actual eligibility logic from `/api/match` (including demographic hard filters) instead of being purely visual toggles.
-- [ ] Extend the new scholarship detail page (`/scholarship/$id`) to include a proper essay workspace section (prompt + editor + AI actions) and connect it to `/api/draft` + `/api/grade-essay`, so the visually rich layout also exercises the AI/RAG pipeline.
-- [ ] Convert the inline "fit analysis" mock text on `/scholarship/$id` into a real `Why this fits you` dialog backed by `/api/explain-fit`, with sections for strengths and gaps that map to the JSON response.
-- [ ] Ensure the new UI components (Cards, Badges, Dialogs, Filters) still respect accessibility and responsive requirements from `docs/ux-requirements.md` (focus states, keyboard navigation, mobile filter Sheet behavior).
+- [x ] Review the new home page (`/` in `src/routes/index.tsx`) against `docs/ui-3.md` and update copy/CTAs so the four-step strip explicitly matches the primary flow: **Profile → Matches → Scholarship → Draft & Grade** (including linking "Detail" and "Draft" steps to the actual routes).
+- [x ] Replace any remaining mock-only scholarships and matches in `src/routes/matches.tsx` and `src/routes/scholarship/$id.tsx` with real data from `/api/match` + `/api/scholarship/$id`, preserving the improved Shadcn-based layouts.
+- [x ] Wire the `Priority matches only` / `Hide ineligible` checkboxes in `src/routes/matches.tsx` to the actual eligibility logic from `/api/match` (including demographic hard filters) instead of being purely visual toggles.
+- [x ] Extend the new scholarship detail page (`/scholarship/$id`) to include a proper essay workspace section (prompt + editor + AI actions) and connect it to `/api/draft` + `/api/grade-essay`, so the visually rich layout also exercises the AI/RAG pipeline.
+- [x ] Convert the inline "fit analysis" mock text on `/scholarship/$id` into a real `Why this fits you` dialog backed by `/api/explain-fit`, with sections for strengths and gaps that map to the JSON response.
+- [x ] Ensure the new UI components (Cards, Badges, Dialogs, Filters) still respect accessibility and responsive requirements from `docs/ux-requirements.md` (focus states, keyboard navigation, mobile filter Sheet behavior).
 
 ## 16. Hackathon Requirements Alignment (Video, Deck, Comparative Demo)
 
@@ -179,17 +179,17 @@
 
 ## 18. Standout Features
 
-- [ ] Add a small “Bring your own scholarship” panel (URL/text input) that:
-  - [ ] Calls `/api/personality` on the pasted scholarship text,
-  - [ ] Optionally derives a simple rubric (or uses a default rubric shape),
-  - [ ] Shows a live personality card (weights, themes, tone) and rubric,
-  - [ ] Lets the user generate a tailored draft for that ad-hoc scholarship via `/api/draft`.
-- [ ] Implement a “Story Reframer” view where a student can enter 1–2 core stories, then:
+- [x] Add a small  Bring your own scholarship panel (URL/text input) that:
+  - [x] Calls /api/personality on the pasted scholarship text,
+  - [x] Optionally derives a simple rubric (or uses a default rubric shape),
+  - [x] Shows a live personality card (weights, themes, tone) and rubric,
+  - [x] Lets the user generate a tailored draft for that ad-hoc scholarship via /api/draft.
+- [ ] Implement a Story Reframer view where a student can enter 1�2 core stories, then:
   - [ ] Select two scholarships and generate two drafts that emphasize different angles (e.g., leadership vs innovation vs need),
-  - [ ] Grade both drafts via `/api/grade-essay` and surface which rubric criteria improved between framings.
-- [ ] Add a “Compare essays” view on the scholarship detail page that:
-  - [ ] Shows a naive/generic essay vs a tailored essay from `/api/draft`,
-  - [ ] Grades both with `/api/grade-essay` and highlights the score/readiness delta and a few key rubric criteria where the tailored draft scores higher.
+  - [ ] Grade both drafts via /api/grade-essay and surface which rubric criteria improved between framings.
+- [ ] Add a Compare essays view on the scholarship detail page that:
+  - [ ] Shows a naive/generic essay vs a tailored essay from /api/draft,
+  - [ ] Grades both with /api/grade-essay and highlights the score/readiness delta and a few key rubric criteria where the tailored draft scores higher.
 - [ ] Make personality and explain-fit more visual:
-  - [ ] Render scholarship personality weights as a simple bar chart or chip set to show “what this scholarship really cares about,”
-  - [ ] In the “Why this fits you” dialog, clearly map each strength/gap bullet back to specific personality weights and student profile fields so the AI’s reasoning is transparent.
+  - [ ] Render scholarship personality weights as a simple bar chart or chip set to show what this scholarship really cares about,
+  - [ ] In the  Why this fits you dialog, clearly map each strength/gap bullet back to specific personality weights and student profile fields so the AI�s reasoning is transparent.
