@@ -27,11 +27,15 @@ export const Route = createFileRoute('/api/drafts')({
 
         try {
           const sql = `
-            SELECT content, explanation, updated_at
-            FROM drafts
-            WHERE student_id = $1 AND scholarship_id = $2
-            ORDER BY updated_at DESC
-            LIMIT 1
+            select
+              content,
+              explanation,
+              created_at as updated_at
+            from drafts
+            where student_id = $1
+              and scholarship_id = $2
+            order by created_at desc
+            limit 1
           `
           const result = await pool.query(sql, [student_id, scholarship_id])
           
@@ -62,11 +66,12 @@ export const Route = createFileRoute('/api/drafts')({
           const checkResult = await pool.query(checkSql, [student_id, scholarship_id])
 
           if (checkResult.rows.length > 0) {
-            // Update existing
+            // Update existing content (created_at already reflects first save)
             const updateSql = `
-              UPDATE drafts 
-              SET content = $1, updated_at = NOW()
-              WHERE student_id = $2 AND scholarship_id = $3
+              update drafts
+              set content = $1
+              where student_id = $2
+                and scholarship_id = $3
             `
             await pool.query(updateSql, [content, student_id, scholarship_id])
           } else {

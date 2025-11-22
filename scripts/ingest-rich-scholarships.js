@@ -147,22 +147,13 @@ async function main() {
 
   const filePath = path.resolve(process.cwd(), fileArg)
   const raw = await fs.readFile(filePath, 'utf8')
-  let parsed
+  let records
   try {
-    parsed = JSON.parse(raw)
+    records = parseJsonOrJsonl(raw, fileArg)
   } catch (e) {
-    console.error('ERROR: Failed to parse JSON file:', e)
+    console.error('ERROR:', e.message || e)
     process.exitCode = 1
     return
-  }
-
-  let records
-  if (Array.isArray(parsed)) {
-    records = parsed
-  } else if (parsed && Array.isArray(parsed.scholarships)) {
-    records = parsed.scholarships
-  } else {
-    records = [parsed]
   }
 
   if (records.length === 0) {
@@ -211,3 +202,39 @@ main().catch((err) => {
   console.error('Unexpected error during ingest:', err)
   process.exitCode = 1
 })
+
+function parseJsonOrJsonl(raw, fileArg) {
+  // Support both JSON and JSONL for convenience.
+  // - .json: existing behavior (single object / array / { scholarships: [...] }).
+  // - .jsonl: one JSON object per line.
+  const lower = fileArg.toLowerCase()
+  if (lower.endsWith('.jsonl')) {
+    const lines = raw.split(/\r?\n/).map((l) => l.trim())
+    const records = []
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      if (!line || line.startsWith('#')) continue
+      try {
+        records.push(JSON.parse(line))
+      } catch (e) {
+        throw new Error(`Failed to parse JSONL line ${i + 1}: ${e}`)
+      }
+    }
+    return records
+  }
+
+  let parsed
+  try {
+    parsed = JSON.parse(raw)
+  } catch (e) {
+    throw new Error(`Failed to parse JSON file: ${e}`)
+  }
+
+  if (Array.isArray(parsed)) {
+    return parsed
+  }
+  if (parsed && Array.isArray(parsed.scholarships)) {
+    return parsed.scholarships
+  }
+  return [parsed]
+}

@@ -131,6 +131,9 @@ export const Route = createFileRoute('/api/draft')({
           .map(([k, v]) => `${k}:${v}`)
           .join(', ')
 
+        const rubricJson = JSON.stringify(input.rubric)
+        const profileJson = JSON.stringify(input.student_profile)
+
         const user = `
 Scholarship: ${input.scholarship_name}
 Scholarship text (optional): ${input.scholarship_text.slice(0, 4000)}
@@ -140,12 +143,10 @@ Personality:
 - Themes: ${input.personality.themes.join(', ')}
 - Tone: ${input.style ?? input.personality.tone}
 - Constraints: ${(input.personality.constraints ?? []).join('; ')}
-
-Rubric (criteria and weights, if provided):
-${JSON.stringify(input.rubric, null, 2)}
-
-Student profile (facts only):
-${JSON.stringify(input.student_profile, null, 2)}
+Rubric (criteria and weights, if provided, minified JSON):
+${rubricJson}
+Student profile (facts only, minified JSON):
+${profileJson}
 
 Target words: ~${input.word_target}
 
@@ -172,7 +173,7 @@ Rules:
         const res = await askClaude({
           system,
           user,
-          max_tokens: 1600,
+          max_tokens: 1100,
         })
         const durationMs = Date.now() - started
 

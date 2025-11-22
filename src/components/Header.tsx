@@ -1,4 +1,3 @@
-import { Link } from '@tanstack/react-router'
 import * as React from 'react'
 import {
   Activity,
@@ -10,7 +9,7 @@ import {
   User,
   X,
 } from 'lucide-react'
-
+import { Link } from '@tanstack/react-router'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Button } from '@/components/ui/button'
 import {
@@ -60,7 +59,7 @@ export default function Header() {
         <span>Matches</span>
       </Link>
       <Link
-        to="/"
+        to="/dashboard"
         onClick={onClick}
         className={`transition hover:text-foreground ${
           mobile

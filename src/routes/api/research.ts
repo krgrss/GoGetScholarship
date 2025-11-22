@@ -70,8 +70,8 @@ export const Route = createFileRoute('/api/research')({
         const client = await pool.connect()
         try {
           const { rows } = await client.query(
-            `SELECT name, description, raw_text, metadata FROM scholarships WHERE id = $1::uuid`,
-            [body.scholarship_id]
+            `select name, raw_text, metadata from scholarships where id = $1::uuid limit 1`,
+            [body.scholarship_id],
           )
 
           if (rows.length === 0) {
@@ -81,7 +81,10 @@ export const Route = createFileRoute('/api/research')({
             )
           }
 
-          const scholarship = rows[0]
+          const scholarship = rows[0] as any
+          const metadata = (scholarship.metadata ?? {}) as any
+          const descriptionRaw = metadata.description_raw ?? ''
+          const eligibilityRaw = metadata.eligibility_raw ?? ''
 
           const system =
             'You are an expert scholarship consultant. Analyze the scholarship description to infer what a successful applicant looks like.\n' +
@@ -91,8 +94,9 @@ export const Route = createFileRoute('/api/research')({
 Analyze this scholarship and provide research insights:
 
 NAME: ${scholarship.name}
-DESCRIPTION: ${scholarship.description}
-RAW TEXT: ${scholarship.raw_text?.slice(0, 3000) || ''}
+DESCRIPTION_RAW: ${String(descriptionRaw).slice(0, 1500)}
+ELIGIBILITY_RAW: ${String(eligibilityRaw).slice(0, 1000)}
+RAW_TEXT: ${scholarship.raw_text?.slice(0, 2000) || ''}
 
 Return EXACTLY this JSON:
 {
@@ -109,7 +113,7 @@ Return EXACTLY this JSON:
           const res = await askClaude({
             system,
             user,
-            max_tokens: 800,
+            max_tokens: 550,
           })
 
           const txt = extractAnthropicText(res)

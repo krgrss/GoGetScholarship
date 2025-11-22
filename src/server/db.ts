@@ -16,8 +16,14 @@ export async function dbHealth(): Promise<{ ok: boolean }> {
    * Check Postgres connectivity.
    * @returns Promise resolving to `{ ok: true }` if a trivial query succeeds.
    */
-  const r = await pool.query('select 1 as ok')
-  return { ok: r.rows?.length > 0 }
+  try {
+    const r = await pool.query('select 1 as ok')
+    return { ok: r.rows?.length > 0 }
+  } catch (e) {
+    const fs = await import('node:fs/promises');
+    await fs.appendFile('c:/Users/admin/Desktop/GoGetScholarship/my-scholarship-app/server-debug.log', `[${new Date().toISOString()}] DB Health Error: ${e}\nENV.DATABASE_URL present: ${!!ENV.DATABASE_URL}\n`);
+    throw e;
+  }
 }
 
 export type EligibilityFilter = {
@@ -47,6 +53,21 @@ export type EligibilityFilter = {
    * If true, prefer scholarships that require need when that flag is set.
    */
   hasFinancialNeed?: boolean
+  /**
+   * Student's gender identity (e.g., "Woman", "Man", "Non-binary").
+   * Used for hard filtering against demographic_eligibility.
+   */
+  gender?: string
+  /**
+   * Student's ethnicity (e.g., "Black", "Indigenous").
+   * Used for hard filtering.
+   */
+  ethnicity?: string
+  /**
+   * List of self-identified demographic tags (e.g. ["first_generation", "lgbtq"]).
+   * Used for hard filtering.
+   */
+  demographicSelf?: string[]
 }
 
 /** Negative inner product (dot product) distance query with pgvector */
@@ -73,6 +94,7 @@ export async function topKByEmbedding(
     eligibility?.fieldsOfStudy ?? null, // $6
     eligibility?.citizenship ?? null, // $7
     typeof eligibility?.hasFinancialNeed === 'boolean' ? eligibility.hasFinancialNeed : null, // $8
+    eligibility?.demographicSelf ?? [], // $9 (Array of student's tags)
   ]
 
   // Use negative inner product operator `<#>` and HNSW index on vector_ip_ops
@@ -131,6 +153,26 @@ export async function topKByEmbedding(
         or (
           (s.metadata->>'financial_need_required')::boolean is true
           or s.metadata ? 'financial_need_required' = false
+        )
+      )
+      -- Demographic Eligibility (Hard Filter)
+      -- Logic: Include scholarship IF:
+      -- 1. It has NO demographic_eligibility field (or is empty/none_specified)
+      -- 2. OR The student's tags ($9) overlap with the scholarship's requirements
+      -- 3. OR The scholarship's requirements DO NOT contain any "Hard Constraints" that the student lacks.
+      --    (We define a list of hard constraints like 'women', 'indigenous', 'black', etc.)
+      and (
+        not (s.metadata ? 'demographic_eligibility')
+        or jsonb_array_length(s.metadata->'demographic_eligibility') = 0
+        or s.metadata->'demographic_eligibility' ? 'none_specified'
+        -- Student matches at least one requirement
+        or (s.metadata->'demographic_eligibility') ?| $9::text[]
+        -- Scholarship does NOT have a hard constraint that the student misses
+        -- (If scholarship requires 'women' and student is not 'women', exclude.
+        --  But if scholarship requires 'leadership' and student is not 'leadership', keep it.)
+        or not (
+           s.metadata->'demographic_eligibility' ?| array['women', 'female', 'indigenous', 'black', 'african_american', 'hispanic', 'latino', 'lgbtq', 'disability', 'first_generation']
+           and not ((s.metadata->'demographic_eligibility') ?| $9::text[])
         )
       )
     order by e.embedding <#> $1::vector

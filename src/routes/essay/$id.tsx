@@ -1,12 +1,7 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
 import {
-  AlertCircle,
   ArrowLeft,
-  CheckCircle2,
-  ChevronRight,
-  FileText,
   Lightbulb,
-  Maximize2,
   MessageSquare,
   RefreshCw,
   Save,
@@ -20,7 +15,6 @@ import { Button } from '@/components/ui/button'
 import {
   Card,
   CardContent,
-  CardDescription,
   CardFooter,
   CardHeader,
   CardTitle,
@@ -48,47 +42,153 @@ function EssayWorkspacePage() {
   const { id } = Route.useParams()
   const [essayContent, setEssayContent] = React.useState('')
   const [isAnalyzing, setIsAnalyzing] = React.useState(false)
+  const [isSaving, setIsSaving] = React.useState(false)
+  const [lastSaved, setLastSaved] = React.useState<string | null>(null)
+  const [rubricItems, setRubricItems] = React.useState<any[]>([])
+  const [scholarshipName, setScholarshipName] = React.useState('')
+  const [prompt, setPrompt] = React.useState('')
+  const [loading, setLoading] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
 
-  // Mock Data
-  const scholarshipName = 'First-Gen STEM Innovators Scholarship'
-  const prompt =
-    'Describe a significant challenge you have faced and how it has shaped your resilience and determination to pursue a career in STEM. (500 words max)'
+  React.useEffect(() => {
+    let cancelled = false
+    async function load() {
+      if (typeof window === 'undefined') return
+      setLoading(true)
+      setError(null)
+      try {
+        const [scholarRes, rubricRes] = await Promise.all([
+          fetch(`/api/scholarship/${id}`),
+          fetch(`/api/rubric?scholarship_id=${encodeURIComponent(id)}`),
+        ])
+        const schJson = await scholarRes.json()
+        if (!scholarRes.ok || !schJson.ok) {
+          throw new Error(schJson?.error || 'Failed to load scholarship')
+        }
+        const sch = schJson.scholarship as { name: string; metadata?: any }
+        const meta = (sch.metadata ?? {}) as any
+        const prompts: string[] = Array.isArray(meta.essay_prompts_raw)
+          ? meta.essay_prompts_raw
+          : []
 
-  const rubricItems = [
-    {
-      criteria: 'Resilience & Overcoming Adversity',
-      score: 3,
-      maxScore: 5,
-      feedback:
-        'Good description of the challenge, but could emphasize the "growth" aspect more.',
-      status: 'needs-improvement',
-    },
-    {
-      criteria: 'STEM Passion & Clarity',
-      score: 5,
-      maxScore: 5,
-      feedback: 'Excellent connection between your experience and your major.',
-      status: 'good',
-    },
-    {
-      criteria: 'Community Impact',
-      score: 2,
-      maxScore: 5,
-      feedback: 'This area is currently weak. Mention your volunteering work.',
-      status: 'weak',
-    },
-  ]
+        const rubricJson = await rubricRes.json().catch(() => null)
+        if (rubricRes.ok && rubricJson?.ok && Array.isArray(rubricJson.rubric)) {
+          setRubricItems(rubricJson.rubric)
+        }
 
-  const handleSave = () => {
-    toast.success('Draft saved successfully')
+        if (!cancelled) {
+          setScholarshipName(sch.name)
+          setPrompt(
+            prompts[0] ||
+              'Describe a significant experience or story that shows why you are a strong fit for this scholarship.',
+          )
+        }
+
+        const studentId =
+          localStorage.getItem('scholarship_student_id') ||
+          localStorage.getItem('student_id')
+        if (studentId) {
+          const draftRes = await fetch(
+            `/api/drafts?student_id=${encodeURIComponent(
+              studentId,
+            )}&scholarship_id=${encodeURIComponent(id)}`,
+          )
+          const draftJson = await draftRes.json()
+          if (
+            draftRes.ok &&
+            draftJson.ok &&
+            draftJson.draft?.content &&
+            !cancelled
+          ) {
+            setEssayContent(draftJson.draft.content as string)
+            if (draftJson.draft.updated_at && !cancelled) {
+              setLastSaved(draftJson.draft.updated_at as string)
+            }
+          }
+        }
+      } catch (e: any) {
+        if (!cancelled) {
+          setError(String(e.message || e))
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false)
+        }
+      }
+    }
+
+    void load()
+    return () => {
+      cancelled = true
+    }
+  }, [id])
+
+  const handleSave = async () => {
+    if (!essayContent.trim()) {
+      toast.error('Please write some content first')
+      return
+    }
+    setIsSaving(true)
+    try {
+      const studentId =
+        localStorage.getItem('scholarship_student_id') ||
+        localStorage.getItem('student_id')
+      if (!studentId) {
+        throw new Error('No student profile found. Complete onboarding first.')
+      }
+
+      const res = await fetch('/api/drafts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_id: studentId,
+          scholarship_id: id,
+          content: essayContent,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.ok) {
+        throw new Error(json?.error || 'Failed to save draft')
+      }
+      setLastSaved(new Date().toLocaleTimeString())
+      toast.success('Draft saved successfully')
+    } catch (e: any) {
+      toast.error(String(e.message || e))
+    } finally {
+      setIsSaving(false)
+    }
   }
 
-  const handleAnalyze = () => {
+  const handleAnalyze = async () => {
+    if (!essayContent.trim()) {
+      toast.error('Please write some content first')
+      return
+    }
+    if (!rubricItems.length) {
+      toast.error('No rubric configured for this scholarship yet.')
+      return
+    }
     setIsAnalyzing(true)
-    setTimeout(() => {
-      setIsAnalyzing(false)
+    try {
+      const res = await fetch('/api/grade-essay', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: essayContent,
+          rubric: rubricItems,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.ok) {
+        throw new Error(json?.error || 'Failed to analyze essay')
+      }
+      setRubricItems(json.result?.criteria || [])
       toast.success('Analysis complete! Check the rubric feedback.')
-    }, 1500)
+    } catch (e: any) {
+      toast.error(String(e.message || e))
+    } finally {
+      setIsAnalyzing(false)
+    }
   }
 
   return (
@@ -107,7 +207,7 @@ function EssayWorkspacePage() {
           <Separator orientation="vertical" className="h-6" />
           <div>
             <h1 className="text-sm font-semibold leading-none">
-              {scholarshipName}
+              {loading ? 'Loading…' : scholarshipName || 'Scholarship'}
             </h1>
             <span className="text-xs text-muted-foreground">
               Personal Statement
@@ -115,11 +215,20 @@ function EssayWorkspacePage() {
           </div>
         </div>
         <div className="flex items-center gap-2">
+          {lastSaved && (
+            <span className="text-xs text-muted-foreground">
+              Saved at {lastSaved}
+            </span>
+          )}
           <span className="text-xs text-muted-foreground">
             {essayContent.split(/\s+/).filter((w) => w.length > 0).length} words
           </span>
-          <Button variant="outline" size="sm" onClick={handleSave}>
-            <Save className="mr-2 h-3.5 w-3.5" />
+          <Button variant="outline" size="sm" onClick={handleSave} disabled={isSaving}>
+            {isSaving ? (
+              <RefreshCw className="mr-2 h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <Save className="mr-2 h-3.5 w-3.5" />
+            )}
             Save
           </Button>
           <Button size="sm" onClick={handleAnalyze} disabled={isAnalyzing}>

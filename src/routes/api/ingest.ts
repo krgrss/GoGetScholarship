@@ -82,7 +82,19 @@ export const Route = createFileRoute('/api/ingest')({
         }
 
         const texts = body.scholarships.map((s) => s.raw_text)
-        const embeddings = await embedWithVoyage(texts)
+
+        let embeddings: number[][]
+        try {
+          embeddings = await embedWithVoyage(texts)
+        } catch (e: any) {
+          return new Response(
+            JSON.stringify({
+              ok: false,
+              error: `Embedding error: ${String(e)}`,
+            }),
+            { status: 500, headers: { 'Content-Type': 'application/json' } },
+          )
+        }
 
         if (embeddings.length !== body.scholarships.length) {
           return new Response(
@@ -127,9 +139,15 @@ export const Route = createFileRoute('/api/ingest')({
             )
           }
           await client.query('COMMIT')
-        } catch (e) {
+        } catch (e: any) {
           await client.query('ROLLBACK')
-          throw e
+          return new Response(
+            JSON.stringify({
+              ok: false,
+              error: `Database error: ${String(e).slice(0, 4000)}`,
+            }),
+            { status: 500, headers: { 'Content-Type': 'application/json' } },
+          )
         } finally {
           client.release()
         }

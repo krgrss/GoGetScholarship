@@ -37,7 +37,7 @@ const STEPS: { key: StepKey; label: string; optional?: boolean }[] = [
   { key: 'basics', label: 'Basics' },
   { key: 'academics', label: 'Academics' },
   { key: 'background', label: 'Background', optional: true },
-  { key: 'about', label: 'About you', optional: true },
+  { key: 'about', label: 'About you' },
 ]
 
 function OnboardingPage() {
@@ -78,14 +78,13 @@ function OnboardingPage() {
     setStepIndex((prev) => Math.max(prev - 1, 0))
   }
 
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault()
+  async function handleSubmit() {
     setSaving(true)
     try {
       // Generate summary
       const summary = `Student from ${country} studying ${program} (${level}). GPA: ${gpa}/${gpaScale}. Background: ${backgroundTags.join(', ')}. About: ${aboutText}`
       
-      // Save to local storage for demo
+      // Save to local storage so matches page can reuse summary/profile
       const profile = {
         country,
         level,
@@ -99,16 +98,52 @@ function OnboardingPage() {
       }
       localStorage.setItem('scholarship_profile', JSON.stringify(profile))
 
-      // Simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 800))
-      
-      toast.success('Profile saved!')
-      navigate({ to: '/matches' })
-    } catch (err) {
-      toast.error('Failed to save profile. Please try again.')
-    } finally {
-      setSaving(false)
-    }
+      // Persist profile to backend to get a real student_id + embedding
+      const gpaNumber = gpa ? Number(gpa) : undefined
+      const scaleNumber = gpaScale ? Number(gpaScale) : undefined
+      let normalizedGpa: number | undefined = undefined
+      if (typeof gpaNumber === 'number' && !Number.isNaN(gpaNumber)) {
+        if (!scaleNumber || scaleNumber === 4 || scaleNumber === 4.0) {
+          normalizedGpa = gpaNumber
+        } else if (scaleNumber === 100) {
+          normalizedGpa = Number((gpaNumber / 25).toFixed(2))
+        }
+      }
+
+      const profileRes = await fetch('/api/profile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: undefined,
+          gpa: normalizedGpa,
+          major: program || undefined,
+          country: country || undefined,
+          summary,
+          metadata: {
+            level,
+            gpaScale,
+            backgroundTags,
+            aboutText,
+            source: 'onboarding',
+          },
+        }),
+      })
+      const profileData = await profileRes.json()
+      if (!profileRes.ok || !profileData.ok) {
+        throw new Error(profileData?.error || `Profile save failed (${profileRes.status})`)
+      }
+      if (profileData.student_id) {
+        localStorage.setItem('scholarship_student_id', profileData.student_id)
+        localStorage.setItem('student_id', profileData.student_id)
+      }
+
+        toast.success('Profile saved!')
+        navigate({ to: '/matches' })
+      } catch (err) {
+        toast.error('Failed to save profile. Please try again.')
+      } finally {
+        setSaving(false)
+      }
   }
 
   return (
@@ -146,7 +181,7 @@ function OnboardingPage() {
           </div>
         </CardHeader>
 
-        <form onSubmit={handleSubmit}>
+          <form>
           <CardContent className="space-y-6">
             {currentStep.key === 'basics' && (
               <div className="space-y-4">
@@ -305,7 +340,7 @@ function OnboardingPage() {
               )}
               
               {stepIndex === STEPS.length - 1 ? (
-                <Button type="submit" disabled={saving}>
+                <Button type="button" onClick={() => void handleSubmit()} disabled={saving}>
                   {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Save & View Matches
                 </Button>

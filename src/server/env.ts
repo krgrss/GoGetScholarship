@@ -19,6 +19,13 @@ const EnvSchema = z.object({
   ADMIN_API_KEY: z.string().optional(),
 })
 
+import fs from 'node:fs';
+try {
+  fs.appendFileSync('c:/Users/admin/Desktop/GoGetScholarship/my-scholarship-app/env-debug.log', `[${new Date().toISOString()}] Env check:\nDATABASE_URL: ${process.env.DATABASE_URL ? 'Present' : 'Missing'}\nVOYAGE_API_KEY: ${process.env.VOYAGE_API_KEY ? 'Present' : 'Missing'}\n`);
+} catch (e) {
+  // ignore
+}
+
 export const ENV = EnvSchema.parse({
   ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
   VOYAGE_API_KEY: process.env.VOYAGE_API_KEY,

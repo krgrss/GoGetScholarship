@@ -47,77 +47,66 @@ export const Route = createFileRoute('/dashboard')({
   component: DashboardPage,
 })
 
-function DashboardPage() {
-  // Mock Data
-  const kpiData = [
-    {
-      title: 'Total Applications',
-      value: '12',
-      change: '+2 this week',
-      icon: FileText,
-    },
-    {
-      title: 'In Progress',
-      value: '5',
-      change: '3 due soon',
-      icon: Clock,
-    },
-    {
-      title: 'Completed',
-      value: '7',
-      change: '4 submitted',
-      icon: CheckCircle2,
-    },
-    {
-      title: 'Potential Value',
-      value: '$45k',
-      change: 'Top 10% matches',
-      icon: TrendingUp,
-    },
-  ]
+type DashboardKpi = {
+  total: number
+  inProgress: number
+  completed: number
+  potentialValue: string
+}
 
-  const applications = [
-    {
-      id: '1',
-      name: 'First-Gen STEM Innovators Scholarship',
-      provider: 'Aurora Foundation',
-      deadline: 'Jan 15, 2026',
-      status: 'In Progress',
-      progress: 65,
-      readiness: 'High',
-      nextAction: 'Draft Essay',
-    },
-    {
-      id: '2',
-      name: 'Global Future Leaders Grant',
-      provider: 'World Education Trust',
-      deadline: 'Feb 01, 2026',
-      status: 'Not Started',
-      progress: 0,
-      readiness: 'Medium',
-      nextAction: 'Review Requirements',
-    },
-    {
-      id: '3',
-      name: 'Women in Tech Scholarship',
-      provider: 'TechForward',
-      deadline: 'Dec 20, 2025',
-      status: 'Submitted',
-      progress: 100,
-      readiness: 'Complete',
-      nextAction: 'Wait for Decision',
-    },
-    {
-      id: '4',
-      name: 'Community Impact Award',
-      provider: 'Local Civic Group',
-      deadline: 'Jan 10, 2026',
-      status: 'In Progress',
-      progress: 30,
-      readiness: 'Low',
-      nextAction: 'Request References',
-    },
-  ]
+type DashboardApplication = {
+  id: string
+  draftId: string
+  name: string
+  provider: string
+  deadline: string
+  status: string
+  progress: number
+  readiness: string
+  nextAction: string
+}
+
+function DashboardPage() {
+  const [kpi, setKpi] = React.useState<DashboardKpi | null>(null)
+  const [applications, setApplications] = React.useState<DashboardApplication[]>([])
+  const [loading, setLoading] = React.useState(false)
+  const [error, setError] = React.useState<string | null>(null)
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    async function load() {
+      setLoading(true)
+      setError(null)
+      try {
+        const studentId =
+          localStorage.getItem('scholarship_student_id') ||
+          localStorage.getItem('student_id')
+
+        if (!studentId) {
+          setError(
+            'No saved profile found. Complete the onboarding flow and create at least one draft to see your dashboard.',
+          )
+          return
+        }
+
+        const res = await fetch(`/api/dashboard?student_id=${encodeURIComponent(studentId)}`)
+        const json = await res.json()
+        if (!res.ok || !json.ok) {
+          throw new Error(json?.error || `Dashboard request failed (${res.status})`)
+        }
+
+        setKpi(json.kpi as DashboardKpi)
+        setApplications((json.applications ?? []) as DashboardApplication[])
+      } catch (e: any) {
+        setError(String(e.message || e))
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    void load()
+  }, [])
 
   const suggestions = [
     {
@@ -155,22 +144,60 @@ function DashboardPage() {
         </div>
 
         {/* KPI Cards */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {kpiData.map((kpi, i) => (
-            <Card key={i}>
-              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">
-                  {kpi.title}
-                </CardTitle>
-                <kpi.icon className="h-4 w-4 text-muted-foreground" />
-              </CardHeader>
-              <CardContent>
-                <div className="text-2xl font-bold">{kpi.value}</div>
-                <p className="text-xs text-muted-foreground">{kpi.change}</p>
+        {kpi ? (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            {[
+              {
+                title: 'Total Applications',
+                value: String(kpi.total),
+                change: '',
+                icon: FileText,
+              },
+              {
+                title: 'In Progress',
+                value: String(kpi.inProgress),
+                change: '',
+                icon: Clock,
+              },
+              {
+                title: 'Completed',
+                value: String(kpi.completed),
+                change: '',
+                icon: CheckCircle2,
+              },
+              {
+                title: 'Potential Value',
+                value: kpi.potentialValue,
+                change: '',
+                icon: TrendingUp,
+              },
+            ].map((item) => (
+              <Card key={item.title}>
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                  <CardTitle className="text-sm font-medium">
+                    {item.title}
+                  </CardTitle>
+                  <item.icon className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold">{item.value}</div>
+                  <p className="text-xs text-muted-foreground">{item.change}</p>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Card className="md:col-span-2 lg:col-span-4">
+              <CardContent className="py-6 text-sm text-muted-foreground">
+                {loading
+                  ? 'Loading your dashboard…'
+                  : error ||
+                    'Your dashboard will populate once you have saved drafts and applications.'}
               </CardContent>
             </Card>
-          ))}
-        </div>
+          </div>
+        )}
 
         <div className="mt-8 grid gap-8 lg:grid-cols-[2fr_1fr]">
           {/* Main Content - Applications List */}
@@ -179,7 +206,8 @@ function DashboardPage() {
               <CardHeader>
                 <CardTitle>Your Applications</CardTitle>
                 <CardDescription>
-                  Manage your ongoing scholarship applications.
+                  Manage your ongoing scholarship applications and see how close each
+                  essay is to \"ready\".
                 </CardDescription>
               </CardHeader>
               <CardContent>
@@ -213,6 +241,7 @@ function DashboardPage() {
                     <TableRow>
                       <TableHead>Scholarship</TableHead>
                       <TableHead>Status</TableHead>
+                      <TableHead>Readiness</TableHead>
                       <TableHead>Progress</TableHead>
                       <TableHead className="text-right">Action</TableHead>
                     </TableRow>
@@ -242,6 +271,24 @@ function DashboardPage() {
                             }
                           >
                             {app.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <Badge
+                            variant={
+                              app.readiness === 'High'
+                                ? 'secondary'
+                                : app.readiness === 'Medium'
+                                  ? 'default'
+                                  : 'outline'
+                            }
+                            className={
+                              app.readiness === 'High'
+                                ? 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400'
+                                : ''
+                            }
+                          >
+                            {app.readiness}
                           </Badge>
                         </TableCell>
                         <TableCell>
