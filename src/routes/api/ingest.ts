@@ -49,6 +49,12 @@ const Scholarship = z.object({
   country: z.string().optional(),
   fields: z.array(z.string()).max(50).optional(),
   metadata: z.record(z.string(), z.any()).optional(),
+  rubric: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string().optional(),
+    weight: z.number().optional()
+  })).optional(),
 })
 
 /**
@@ -137,6 +143,14 @@ export const Route = createFileRoute('/api/ingest')({
                values ($1, $2::vector)`,
               [id, JSON.stringify(embeddings[i])],
             )
+
+            if (s.rubric) {
+              await client.query(
+                `insert into scholarship_rubrics (scholarship_id, rubric, updated_at)
+                 values ($1, $2::jsonb, now())`,
+                [id, JSON.stringify(s.rubric)],
+              )
+            }
           }
           await client.query('COMMIT')
         } catch (e: any) {

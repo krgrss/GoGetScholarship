@@ -1,6 +1,7 @@
 
 import { createFileRoute } from '@tanstack/react-router'
 import { pool } from '@/server/db'
+import { getStudentIdFromRequest } from '@/server/auth'
 
 function deriveWorkload(meta: any): { label: 'Light' | 'Medium' | 'Heavy'; items: string[] } {
   const components = meta?.application_components || {}
@@ -43,7 +44,9 @@ export const Route = createFileRoute('/api/dashboard')({
     handlers: {
       GET: async ({ request }) => {
         const url = new URL(request.url)
-        const studentId = url.searchParams.get('student_id')
+        const rawStudentId = url.searchParams.get('student_id') || getStudentIdFromRequest(request)
+        const studentId =
+          rawStudentId && /^[0-9a-fA-F-]{36}$/.test(rawStudentId) ? rawStudentId : null
 
         if (!studentId) {
           return new Response(JSON.stringify({ ok: false, error: 'Missing student_id' }), {
@@ -53,37 +56,52 @@ export const Route = createFileRoute('/api/dashboard')({
         }
 
         try {
-          // Fetch drafts joined with scholarships.
-          // We treat every draft as an "application" in progress or completed.
           const sql = `
             select
-              d.id as draft_id,
-              d.created_at,
-              d.content,
+              a.id as application_id,
+              a.status as application_status,
               s.id as scholarship_id,
               s.name as scholarship_name,
               s.sponsor,
-              s.metadata
-            from drafts d
-            join scholarships s on d.scholarship_id = s.id
-            where d.student_id = $1::uuid
-            order by d.created_at desc
+              s.metadata,
+              coalesce(d.id, '') as draft_id,
+              coalesce(d.content, '') as draft_content,
+              coalesce(task_counts.total_tasks, 0) as total_tasks,
+              coalesce(task_counts.completed_tasks, 0) as completed_tasks
+            from applications a
+            join scholarships s on s.id = a.scholarship_id
+            left join drafts d
+              on d.student_id = a.student_id
+             and d.scholarship_id = a.scholarship_id
+            left join lateral (
+              select
+                count(*) as total_tasks,
+                count(*) filter (where completed) as completed_tasks
+              from application_plans ap
+              join application_tasks t on t.plan_id = ap.id
+              where ap.application_id = a.id
+            ) as task_counts on true
+            where a.student_id = $1::uuid
+            order by a.created_at desc
           `
 
           const result = await pool.query(sql, [studentId])
           const rows = result.rows as {
-            draft_id: string
-            created_at: string
-            content: string | null
+            application_id: string
+            application_status: string
             scholarship_id: string
             scholarship_name: string
             sponsor: string | null
             metadata: any
+            draft_id: string
+            draft_content: string | null
+            total_tasks: number
+            completed_tasks: number
           }[]
 
           // Calculate KPIs
           const totalApplications = rows.length
-          const completed = rows.filter((r) => (r.content ?? '').length > 1000).length
+          const completed = rows.filter((r) => (r.draft_content ?? '').length > 1000 || r.completed_tasks > 0).length
           const inProgress = totalApplications - completed
 
           // Calculate potential value (sum of max amounts where present)
@@ -95,9 +113,15 @@ export const Route = createFileRoute('/api/dashboard')({
 
           const applications = rows.map((r) => {
             const meta = (r.metadata ?? {}) as any
-            const contentLength = (r.content ?? '').length
-            const isSubmitted = contentLength > 2000 // simple heuristic for demo
-            const progress = Math.min(100, Math.round((contentLength / 2000) * 100))
+            const contentLength = (r.draft_content ?? '').length
+            const hasTasks = r.total_tasks > 0
+            const taskProgress =
+              hasTasks && r.total_tasks > 0
+                ? Math.round((r.completed_tasks / r.total_tasks) * 100)
+                : 0
+            const draftProgress = Math.round((contentLength / 2000) * 100)
+            const progress = hasTasks ? taskProgress : draftProgress
+            const isSubmitted = progress >= 100
 
             const deadlineRaw = meta.deadline as string | undefined
             let deadlineLabel = 'No deadline'
@@ -120,14 +144,26 @@ export const Route = createFileRoute('/api/dashboard')({
 
             return {
               id: r.scholarship_id,
-              draftId: r.draft_id,
+              draftId: r.draft_id || r.application_id,
               name: r.scholarship_name,
               provider,
               deadline: deadlineLabel,
-              status: isSubmitted ? 'Submitted' : 'In Progress',
+              status: isSubmitted
+                ? 'Submitted'
+                : hasTasks
+                  ? r.completed_tasks > 0
+                    ? 'Planned (in progress)'
+                    : 'Planned'
+                  : 'In Progress',
               progress,
               readiness,
-              nextAction: isSubmitted ? 'Wait for Decision' : 'Continue Drafting',
+              nextAction: isSubmitted
+                ? 'Wait for Decision'
+                : hasTasks
+                  ? r.completed_tasks === r.total_tasks
+                    ? 'Review and submit'
+                    : 'Complete plan tasks'
+                  : 'Continue Drafting',
               workloadLabel: workload.label,
               workloadItems: workload.items,
             }

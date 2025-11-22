@@ -3,6 +3,7 @@ import { createFileRoute } from '@tanstack/react-router'
 import { z } from 'zod'
 import { pool } from '@/server/db'
 import { randomUUID } from 'crypto'
+import { getStudentIdFromRequest } from '@/server/auth'
 
 const SaveDraftSchema = z.object({
   student_id: z.string().uuid(),
@@ -15,7 +16,7 @@ export const Route = createFileRoute('/api/drafts')({
     handlers: {
       GET: async ({ request }) => {
         const url = new URL(request.url)
-        const student_id = url.searchParams.get('student_id')
+        const student_id = url.searchParams.get('student_id') || getStudentIdFromRequest(request)
         const scholarship_id = url.searchParams.get('scholarship_id')
 
         if (!student_id || !scholarship_id) {

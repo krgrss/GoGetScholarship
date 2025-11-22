@@ -209,7 +209,7 @@ function DashboardPage() {
                     </TableHeader>
                     <TableBody>
                       {applications.map((app) => (
-                        <TableRow key={app.draftId}>
+                        <TableRow key={app.draftId || app.id}>
                           <TableCell>
                             <div className="space-y-1">
                               <div className="font-medium">{app.name}</div>
@@ -255,7 +255,11 @@ function DashboardPage() {
                             <div className="flex items-center gap-2">
                               <span className="text-xs text-muted-foreground">{app.nextAction}</span>
                               <Button asChild variant="ghost" size="icon" className="h-8 w-8">
-                                <Link to="/scholarship/$id" params={{ id: app.id }}>
+                                <Link
+                                  to="/scholarship/$id"
+                                  params={{ id: app.id }}
+                                  search={{ score: undefined, eligibility: undefined }}
+                                >
                                   <ArrowRight className="h-4 w-4" />
                                 </Link>
                               </Button>
@@ -296,7 +300,11 @@ function DashboardPage() {
                         className="mt-2 h-8 gap-1 text-xs"
                         asChild
                       >
-                        <Link to="/scholarship/$id" params={{ id: s.id }}>
+                        <Link
+                          to="/scholarship/$id"
+                          params={{ id: s.id }}
+                          search={{ score: undefined, eligibility: undefined }}
+                        >
                           Open
                           <Sparkles className="h-3 w-3" />
                         </Link>

@@ -170,9 +170,14 @@ function EssayWorkspacePage() {
     }
     setIsAnalyzing(true)
     try {
+      const adminKey =
+        (typeof window !== 'undefined' && localStorage.getItem('admin_key')) || ''
       const res = await fetch('/api/grade-essay', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          ...(adminKey ? { 'admin-api-key': adminKey } : {}),
+        },
         body: JSON.stringify({
           text: essayContent,
           rubric: rubricItems,
@@ -199,6 +204,7 @@ function EssayWorkspacePage() {
           <Link
             to="/scholarship/$id"
             params={{ id }}
+            search={{ score: undefined, eligibility: undefined }}
             className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-foreground"
           >
             <ArrowLeft className="mr-1 h-4 w-4" />

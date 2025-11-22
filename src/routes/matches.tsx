@@ -55,7 +55,7 @@ type MatchCard = {
   workload: string
   workloadLabel: 'Light' | 'Medium' | 'Heavy'
   matchScore: number
-  status?: 'in-progress' | 'ready'
+  status?: 'in-progress' | 'ready' | 'ineligible'
 }
 
 type ApiMatchRow = {
@@ -109,6 +109,10 @@ function MatchesPage() {
   const [error, setError] = React.useState<string | null>(null)
   const [browseAll, setBrowseAll] = React.useState(true)
   const [sortBy, setSortBy] = React.useState<'score' | 'name'>('score')
+  const [selectedCountries, setSelectedCountries] = React.useState<string[]>([])
+  const [selectedLevels, setSelectedLevels] = React.useState<string[]>([])
+  const [fieldQuery, setFieldQuery] = React.useState('')
+  const [hideIneligible, setHideIneligible] = React.useState(true)
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return
@@ -118,7 +122,8 @@ function MatchesPage() {
       setError(null)
 
       try {
-        const stored = localStorage.getItem('scholarship_profile')
+        const stored =
+          localStorage.getItem('scholarship_profile') || localStorage.getItem('profile')
         const profile = stored ? JSON.parse(stored) : null
         let studentSummary: string | null = null
         let endpoint = '/api/match'
@@ -141,9 +146,12 @@ function MatchesPage() {
             return
           }
           endpoint = '/api/match'
+          const { minGpa, eligibility } = buildEligibility(profile)
           body = {
             student_summary: studentSummary,
             k: 20,
+            ...(minGpa !== undefined ? { min_gpa: minGpa } : {}),
+            ...(eligibility ? { eligibility } : {}),
           }
         }
 
@@ -161,6 +169,9 @@ function MatchesPage() {
 
         let next: MatchCard[] = rows.map((row, index) => {
           const workloadMeta = computeWorkload(row)
+          const eligibilityStatus = evaluateEligibility(row, profile)
+          const baseScore = computeMatchScore(row, index)
+          const adjustedScore = adjustScoreForEligibility(baseScore, eligibilityStatus)
           return {
             id: String(row.id),
             name: row.name,
@@ -178,7 +189,8 @@ function MatchesPage() {
             countryTags: formatTags(extractCountries(row)),
             workload: workloadMeta.text,
             workloadLabel: workloadMeta.label,
-            matchScore: computeMatchScore(row, index),
+            matchScore: adjustedScore,
+            status: eligibilityStatus.status === 'ineligible' ? 'ineligible' : undefined,
           }
         })
 
@@ -248,11 +260,30 @@ function MatchesPage() {
 
   const visibleMatches = React.useMemo(() => {
     const base = [...matches]
+    const filtered = base.filter((match) => {
+      if (hideIneligible && match.status === 'ineligible') return false
+      if (selectedCountries.length) {
+        const tags = match.countryTags.map((t) => normalizeCountry(t))
+        const required = selectedCountries.map(normalizeCountry)
+        if (!required.some((c) => tags.includes(c))) return false
+      }
+      if (selectedLevels.length) {
+        const levels = match.levelTags.map((l) => l.toLowerCase())
+        const required = selectedLevels.map((l) => l.toLowerCase())
+        if (!required.some((lvl) => levels.includes(lvl))) return false
+      }
+      if (fieldQuery.trim()) {
+        const q = fieldQuery.trim().toLowerCase()
+        const fields = match.fieldTags.map((f) => f.toLowerCase())
+        if (!fields.some((f) => f.includes(q))) return false
+      }
+      return true
+    })
     if (sortBy === 'score') {
-      return base.sort((a, b) => b.matchScore - a.matchScore)
+      return filtered.sort((a, b) => b.matchScore - a.matchScore)
     }
-    return base.sort((a, b) => a.name.localeCompare(b.name))
-  }, [matches, sortBy])
+    return filtered.sort((a, b) => a.name.localeCompare(b.name))
+  }, [matches, sortBy, selectedCountries, selectedLevels, fieldQuery, hideIneligible])
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-muted/30">
@@ -299,11 +330,28 @@ function MatchesPage() {
                   Start broad, then narrow to the best fits.
                 </CardDescription>
               </CardHeader>
-              <CardContent>
-                <FiltersContent />
-              </CardContent>
-            </Card>
-          </aside>
+            <CardContent>
+              <FiltersContent
+                selectedCountries={selectedCountries}
+                selectedLevels={selectedLevels}
+                fieldQuery={fieldQuery}
+                hideIneligible={hideIneligible}
+                onToggleCountry={(v) =>
+                  setSelectedCountries((prev) =>
+                    prev.includes(v) ? prev.filter((c) => c !== v) : [...prev, v],
+                  )
+                }
+                onToggleLevel={(v) =>
+                  setSelectedLevels((prev) =>
+                    prev.includes(v) ? prev.filter((c) => c !== v) : [...prev, v],
+                  )
+                }
+                onFieldQuery={setFieldQuery}
+                onToggleHideIneligible={(val) => setHideIneligible(val)}
+              />
+            </CardContent>
+          </Card>
+        </aside>
 
           {/* Right column: matches */}
           <section className="flex-1 space-y-4">
@@ -451,7 +499,14 @@ function MatchesPage() {
                       <span>{match.workload}</span>
                     </div>
                     <Button size="sm" asChild>
-                      <Link to="/scholarship/$id" params={{ id: match.id }}>
+                      <Link
+                        to="/scholarship/$id"
+                        params={{ id: match.id }}
+                        search={{
+                          score: match.matchScore,
+                          eligibility: match.status === 'ineligible' ? 'ineligible' : 'eligible',
+                        }}
+                      >
                         View Details
                         <ArrowRight className="ml-2 h-3 w-3" />
                       </Link>
@@ -540,6 +595,113 @@ function computeWorkload(
   }
 }
 
+function normalizeGpa(profile?: any): number | undefined {
+  if (!profile) return undefined
+  const raw = profile.gpa ? Number(profile.gpa) : NaN
+  const scale = profile.gpaScale ? Number(profile.gpaScale) : 4
+  if (Number.isNaN(raw)) return undefined
+  if (!scale || scale === 4 || scale === 4.0) return raw
+  if (scale === 100) return Number((raw / 25).toFixed(2))
+  return raw
+}
+
+function buildEligibility(profile?: any) {
+  if (!profile) return { minGpa: undefined, eligibility: undefined }
+  const minGpa = normalizeGpa(profile)
+  const eligibility = {
+    country: profile.country || undefined,
+    level_of_study: profile.level || undefined,
+    fields_of_study: profile.program ? [profile.program] : undefined,
+    citizenship: profile.citizenship || undefined,
+    demographic_self: Array.isArray(profile.backgroundTags)
+      ? profile.backgroundTags.filter(Boolean)
+      : undefined,
+  }
+  const hasEligibility = Object.values(eligibility).some(Boolean)
+  return { minGpa, eligibility: hasEligibility ? eligibility : undefined }
+}
+
+function normalizeValue(value?: string | null) {
+  return value ? value.trim().toLowerCase() : ''
+}
+
+function normalizeCountry(value?: string | null) {
+  const v = normalizeValue(value)
+  const map: Record<string, string> = {
+    us: 'us',
+    usa: 'us',
+    'united states': 'us',
+    united_states: 'us',
+    ca: 'ca',
+    canada: 'ca',
+    uk: 'uk',
+    'united kingdom': 'uk',
+    gb: 'uk',
+    australia: 'au',
+    au: 'au',
+  }
+  return map[v] || v
+}
+
+function evaluateEligibility(row: ApiMatchRow, profile?: any) {
+  if (!profile) return { status: 'unknown' as const, reasons: [] as string[] }
+
+  const reasons: string[] = []
+  let ineligible = false
+
+  const profileCountry = normalizeCountry(profile.country)
+  const profileCitizenship = normalizeValue(profile.citizenship)
+  const profileGpa = normalizeGpa(profile)
+  const profileTags: string[] = Array.isArray(profile.backgroundTags)
+    ? profile.backgroundTags.map(normalizeValue).filter(Boolean)
+    : []
+
+  const countryEligibility = extractArray(row.metadata?.country_eligibility).map(normalizeCountry)
+  const scholarshipCountry = normalizeCountry(row.country || (row.metadata as any)?.source_country)
+  if (profileCountry) {
+    if (countryEligibility.length && !countryEligibility.includes(profileCountry)) {
+      ineligible = true
+      reasons.push('Country not in eligibility list')
+    } else if (scholarshipCountry && scholarshipCountry !== profileCountry) {
+      reasons.push('Different country focus')
+    }
+  }
+
+  if (typeof row.min_gpa === 'number' && profileGpa !== undefined && profileGpa < row.min_gpa) {
+    ineligible = true
+    reasons.push('GPA below minimum')
+  }
+
+  const citizenshipReq = extractArray((row.metadata as any)?.citizenship_requirements).map(
+    normalizeValue,
+  )
+  if (profileCitizenship && citizenshipReq.length && !citizenshipReq.includes(profileCitizenship)) {
+    ineligible = true
+    reasons.push('Citizenship requirement not met')
+  }
+
+  const demographicReq = extractArray((row.metadata as any)?.demographic_eligibility)
+    .map(normalizeValue)
+    .filter((t) => t && t !== 'none_specified')
+  if (demographicReq.length && profileTags.length) {
+    const overlap = demographicReq.some((t) => profileTags.includes(t))
+    if (!overlap) {
+      ineligible = true
+      reasons.push('Demographic requirement not met')
+    }
+  }
+
+  return {
+    status: ineligible ? ('ineligible' as const) : ('eligible' as const),
+    reasons,
+  }
+}
+
+function adjustScoreForEligibility(score: number, eligibility: { status: string }) {
+  if (eligibility.status === 'ineligible') return 0
+  return score
+}
+
 function computeMatchScore(row: ApiMatchRow, fallbackIndex: number) {
   if (typeof row.distance === 'number') {
     const d = Math.min(Math.max(row.distance, 0), 2)
@@ -554,7 +716,27 @@ function computeMatchScore(row: ApiMatchRow, fallbackIndex: number) {
   return Math.max(0, Math.min(100, 70 - fallbackIndex))
 }
 
-function FiltersContent() {
+type FiltersProps = {
+  selectedCountries: string[]
+  selectedLevels: string[]
+  fieldQuery: string
+  hideIneligible: boolean
+  onToggleCountry: (value: string) => void
+  onToggleLevel: (value: string) => void
+  onFieldQuery: (value: string) => void
+  onToggleHideIneligible: (value: boolean) => void
+}
+
+function FiltersContent({
+  selectedCountries,
+  selectedLevels,
+  fieldQuery,
+  hideIneligible,
+  onToggleCountry,
+  onToggleLevel,
+  onFieldQuery,
+  onToggleHideIneligible,
+}: FiltersProps) {
   return (
     <div className="space-y-6">
       <div className="space-y-2">
@@ -562,17 +744,24 @@ function FiltersContent() {
           Country / Region
         </p>
         <div className="space-y-1">
-          {['Canada', 'United States', 'United Kingdom', 'Australia'].map((label) => (
-            <div key={label} className="flex items-center space-x-2">
-              <Checkbox id={`country-${label}`} />
-              <label
-                htmlFor={`country-${label}`}
-                className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                {label}
-              </label>
-            </div>
-          ))}
+          {['Canada', 'United States', 'United Kingdom', 'Australia'].map((label) => {
+            const checked = selectedCountries.includes(label)
+            return (
+              <div key={label} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`country-${label}`}
+                  checked={checked}
+                  onCheckedChange={(val) => onToggleCountry(label)}
+                />
+                <label
+                  htmlFor={`country-${label}`}
+                  className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  {label}
+                </label>
+              </div>
+            )
+          })}
         </div>
       </div>
 
@@ -581,17 +770,24 @@ function FiltersContent() {
           Level of Study
         </p>
         <div className="space-y-1">
-          {['High School', 'Undergraduate', 'Graduate', 'PhD'].map((label) => (
-            <div key={label} className="flex items-center space-x-2">
-              <Checkbox id={`level-${label}`} />
-              <label
-                htmlFor={`level-${label}`}
-                className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-              >
-                {label}
-              </label>
-            </div>
-          ))}
+          {['High School', 'Undergraduate', 'Graduate', 'PhD'].map((label) => {
+            const checked = selectedLevels.includes(label)
+            return (
+              <div key={label} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`level-${label}`}
+                  checked={checked}
+                  onCheckedChange={() => onToggleLevel(label)}
+                />
+                <label
+                  htmlFor={`level-${label}`}
+                  className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  {label}
+                </label>
+              </div>
+            )
+          })}
         </div>
       </div>
 
@@ -599,7 +795,12 @@ function FiltersContent() {
         <label className="text-xs font-medium text-muted-foreground">
           Fields of Study
         </label>
-        <Input placeholder="Search fields..." className="h-9" />
+        <Input
+          placeholder="Search fields..."
+          className="h-9"
+          value={fieldQuery}
+          onChange={(e) => onFieldQuery(e.target.value)}
+        />
       </div>
 
       <div className="space-y-3">
@@ -623,7 +824,7 @@ function FiltersContent() {
 
       <div className="space-y-3">
         <div className="flex items-center space-x-2">
-          <Checkbox id="priority" />
+          <Checkbox id="priority" disabled />
           <label
             htmlFor="priority"
             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
@@ -632,7 +833,11 @@ function FiltersContent() {
           </label>
         </div>
         <div className="flex items-center space-x-2">
-          <Checkbox id="ineligible" defaultChecked />
+          <Checkbox
+            id="ineligible"
+            checked={hideIneligible}
+            onCheckedChange={(val) => onToggleHideIneligible(Boolean(val))}
+          />
           <label
             htmlFor="ineligible"
             className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"

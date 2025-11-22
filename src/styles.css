@@ -1,11 +1,10 @@
-@import 'tailwindcss';
+/* Typography: Fraunces for display, Inter for UI/body */
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 
+@import 'tailwindcss';
 @import 'tw-animate-css';
 
 @custom-variant dark (&:is(.dark *));
-
-/* Typography: Fraunces for display, Inter for UI/body */
-@import url('https://fonts.googleapis.com/css2?family=Fraunces:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap');
 
 body {
   @apply m-0;

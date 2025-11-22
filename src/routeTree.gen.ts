@@ -36,6 +36,8 @@ import { Route as ApiDashboardRouteImport } from './routes/api/dashboard'
 import { Route as ApiClaudeHealthRouteImport } from './routes/api/claude-health'
 import { Route as AdminDebugRouteImport } from './routes/admin/debug'
 import { Route as ApiScholarshipIdRouteImport } from './routes/api/scholarship/$id'
+import { Route as ApiAuthMeRouteImport } from './routes/api/auth/me'
+import { Route as ApiAuthLoginRouteImport } from './routes/api/auth/login'
 import { Route as ApiAdminTelemetryRouteImport } from './routes/api/admin/telemetry'
 import { Route as ApiAdminStudentsRouteImport } from './routes/api/admin/students'
 
@@ -174,6 +176,16 @@ const ApiScholarshipIdRoute = ApiScholarshipIdRouteImport.update({
   path: '/api/scholarship/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiAuthMeRoute = ApiAuthMeRouteImport.update({
+  id: '/api/auth/me',
+  path: '/api/auth/me',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiAuthLoginRoute = ApiAuthLoginRouteImport.update({
+  id: '/api/auth/login',
+  path: '/api/auth/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAdminTelemetryRoute = ApiAdminTelemetryRouteImport.update({
   id: '/api/admin/telemetry',
   path: '/api/admin/telemetry',
@@ -214,6 +226,8 @@ export interface FileRoutesByFullPath {
   '/scholarship/$id': typeof ScholarshipIdRoute
   '/api/admin/students': typeof ApiAdminStudentsRoute
   '/api/admin/telemetry': typeof ApiAdminTelemetryRoute
+  '/api/auth/login': typeof ApiAuthLoginRoute
+  '/api/auth/me': typeof ApiAuthMeRoute
   '/api/scholarship/$id': typeof ApiScholarshipIdRoute
 }
 export interface FileRoutesByTo {
@@ -245,6 +259,8 @@ export interface FileRoutesByTo {
   '/scholarship/$id': typeof ScholarshipIdRoute
   '/api/admin/students': typeof ApiAdminStudentsRoute
   '/api/admin/telemetry': typeof ApiAdminTelemetryRoute
+  '/api/auth/login': typeof ApiAuthLoginRoute
+  '/api/auth/me': typeof ApiAuthMeRoute
   '/api/scholarship/$id': typeof ApiScholarshipIdRoute
 }
 export interface FileRoutesById {
@@ -277,6 +293,8 @@ export interface FileRoutesById {
   '/scholarship/$id': typeof ScholarshipIdRoute
   '/api/admin/students': typeof ApiAdminStudentsRoute
   '/api/admin/telemetry': typeof ApiAdminTelemetryRoute
+  '/api/auth/login': typeof ApiAuthLoginRoute
+  '/api/auth/me': typeof ApiAuthMeRoute
   '/api/scholarship/$id': typeof ApiScholarshipIdRoute
 }
 export interface FileRouteTypes {
@@ -310,6 +328,8 @@ export interface FileRouteTypes {
     | '/scholarship/$id'
     | '/api/admin/students'
     | '/api/admin/telemetry'
+    | '/api/auth/login'
+    | '/api/auth/me'
     | '/api/scholarship/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -341,6 +361,8 @@ export interface FileRouteTypes {
     | '/scholarship/$id'
     | '/api/admin/students'
     | '/api/admin/telemetry'
+    | '/api/auth/login'
+    | '/api/auth/me'
     | '/api/scholarship/$id'
   id:
     | '__root__'
@@ -372,6 +394,8 @@ export interface FileRouteTypes {
     | '/scholarship/$id'
     | '/api/admin/students'
     | '/api/admin/telemetry'
+    | '/api/auth/login'
+    | '/api/auth/me'
     | '/api/scholarship/$id'
   fileRoutesById: FileRoutesById
 }
@@ -404,6 +428,8 @@ export interface RootRouteChildren {
   ScholarshipIdRoute: typeof ScholarshipIdRoute
   ApiAdminStudentsRoute: typeof ApiAdminStudentsRoute
   ApiAdminTelemetryRoute: typeof ApiAdminTelemetryRoute
+  ApiAuthLoginRoute: typeof ApiAuthLoginRoute
+  ApiAuthMeRoute: typeof ApiAuthMeRoute
   ApiScholarshipIdRoute: typeof ApiScholarshipIdRoute
 }
 
@@ -598,6 +624,20 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiScholarshipIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/auth/me': {
+      id: '/api/auth/me'
+      path: '/api/auth/me'
+      fullPath: '/api/auth/me'
+      preLoaderRoute: typeof ApiAuthMeRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/auth/login': {
+      id: '/api/auth/login'
+      path: '/api/auth/login'
+      fullPath: '/api/auth/login'
+      preLoaderRoute: typeof ApiAuthLoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/admin/telemetry': {
       id: '/api/admin/telemetry'
       path: '/api/admin/telemetry'
@@ -644,6 +684,8 @@ const rootRouteChildren: RootRouteChildren = {
   ScholarshipIdRoute: ScholarshipIdRoute,
   ApiAdminStudentsRoute: ApiAdminStudentsRoute,
   ApiAdminTelemetryRoute: ApiAdminTelemetryRoute,
+  ApiAuthLoginRoute: ApiAuthLoginRoute,
+  ApiAuthMeRoute: ApiAuthMeRoute,
   ApiScholarshipIdRoute: ApiScholarshipIdRoute,
 }
 export const routeTree = rootRouteImport

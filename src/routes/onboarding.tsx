@@ -50,6 +50,9 @@ function OnboardingPage() {
   const [gpa, setGpa] = React.useState('')
   const [gpaScale, setGpaScale] = React.useState('4.0')
   const [backgroundTags, setBackgroundTags] = React.useState<string[]>([])
+  const [gender, setGender] = React.useState('')
+  const [ethnicity, setEthnicity] = React.useState('')
+  const [dateOfBirth, setDateOfBirth] = React.useState('')
   const [aboutText, setAboutText] = React.useState('')
 
   const currentStep = STEPS[stepIndex]
@@ -136,6 +139,10 @@ function OnboardingPage() {
           gpa: normalizedGpa,
           major: program || undefined,
           country: country || undefined,
+          gender: gender || undefined,
+          ethnicity: ethnicity || undefined,
+          date_of_birth: dateOfBirth || undefined,
+          level_of_study: level || undefined,
           summary,
           metadata: {
             level,
@@ -289,6 +296,60 @@ function OnboardingPage() {
                 <div className="rounded-md bg-blue-50 p-3 text-xs text-blue-700 dark:bg-blue-900/30 dark:text-blue-300">
                   Optional: used only to match you with identity-based scholarships (e.g. women in STEM, LGBTQ+ awards). It never lowers your match score – it only helps.
                 </div>
+                
+                <div className="grid grid-cols-1 gap-3 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      Gender (optional)
+                    </label>
+                    <Select value={gender} onValueChange={setGender}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select gender" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Male">Male</SelectItem>
+                        <SelectItem value="Female">Female</SelectItem>
+                        <SelectItem value="Non-binary">Non-binary</SelectItem>
+                        <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      Date of Birth (optional)
+                    </label>
+                    <Input
+                      type="date"
+                      value={dateOfBirth}
+                      onChange={(e) => setDateOfBirth(e.target.value)}
+                      placeholder="MM/DD/YYYY"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2 md:col-span-2">
+                    <label className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70">
+                      Ethnicity (optional)
+                    </label>
+                    <Select value={ethnicity} onValueChange={setEthnicity}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select ethnicity" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="Asian">Asian</SelectItem>
+                        <SelectItem value="Black or African American">Black or African American</SelectItem>
+                        <SelectItem value="Hispanic or Latino">Hispanic or Latino</SelectItem>
+                        <SelectItem value="Indigenous">Indigenous</SelectItem>
+                        <SelectItem value="Middle Eastern">Middle Eastern</SelectItem>
+                        <SelectItem value="Pacific Islander">Pacific Islander</SelectItem>
+                        <SelectItem value="White">White</SelectItem>
+                        <SelectItem value="Two or more races">Two or more races</SelectItem>
+                        <SelectItem value="Prefer not to say">Prefer not to say</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                
                 <div className="flex flex-wrap gap-2">
                   {[
                     'First-generation student',

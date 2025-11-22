@@ -5,6 +5,7 @@ import {
   Menu,
   MoonStar,
   Network,
+  Sparkles,
   SunMedium,
   User,
 } from 'lucide-react'
@@ -24,6 +25,78 @@ export default function Header() {
     if (typeof window === 'undefined') return false
     return document.documentElement.classList.contains('dark')
   })
+  const [student, setStudent] = React.useState<{ id: string; email?: string | null; name?: string | null } | null>(null)
+  const [authLoading, setAuthLoading] = React.useState(false)
+
+  React.useEffect(() => {
+    let cancelled = false
+    async function loadMe() {
+      try {
+        const res = await fetch('/api/auth/me')
+        const json = await res.json()
+        if (!cancelled && res.ok && json.ok !== false) {
+          setStudent(json.student ?? null)
+        }
+      } catch {
+        // ignore
+      }
+    }
+    void loadMe()
+    return () => {
+      cancelled = true
+    }
+  }, [])
+
+  function clearLocalState() {
+    try {
+      localStorage.removeItem('scholarship_student_id')
+      localStorage.removeItem('student_id')
+      localStorage.removeItem('scholarship_profile')
+      localStorage.removeItem('profile')
+      Object.keys(localStorage)
+        .filter((k) => k.startsWith('planner_tasks_'))
+        .forEach((k) => localStorage.removeItem(k))
+    } catch {
+      // ignore
+    }
+  }
+
+  async function handleLogin() {
+    const input = window.prompt('Enter your student ID (UUID) or leave blank to create a new one:')?.trim()
+    const studentId = input && input.length > 0 ? input : null
+    setAuthLoading(true)
+    try {
+      const res = await fetch('/api/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ student_id: studentId || undefined }),
+      })
+      const json = await res.json()
+      if (res.ok && json.ok !== false) {
+        clearLocalState()
+        localStorage.setItem('scholarship_student_id', json.student_id)
+        localStorage.setItem('student_id', json.student_id)
+        setStudent({ id: json.student_id })
+      }
+    } catch {
+      // ignore errors for demo
+    } finally {
+      setAuthLoading(false)
+    }
+  }
+
+  async function handleLogout() {
+    setAuthLoading(true)
+    try {
+      await fetch('/api/auth/login', { method: 'DELETE' })
+      setStudent(null)
+      clearLocalState()
+    } catch {
+      // ignore
+    } finally {
+      setAuthLoading(false)
+    }
+  }
 
   React.useEffect(() => {
     if (typeof document === 'undefined') return
@@ -75,7 +148,24 @@ export default function Header() {
         <span>Dashboard</span>
       </Link>
       <Link
-        to="/onboarding"
+        to="/custom"
+        onClick={onClick}
+        className={`transition hover:text-foreground ${
+          mobile
+            ? 'flex items-center gap-3 rounded-lg p-3 text-sm text-muted-foreground hover:bg-muted'
+            : 'text-sm font-medium text-muted-foreground'
+        }`}
+        activeProps={{
+          className: mobile
+            ? 'flex items-center gap-3 rounded-lg bg-primary text-primary-foreground p-3 text-sm hover:bg-primary/90'
+            : 'text-foreground underline decoration-primary/60 underline-offset-4',
+        }}
+      >
+        {mobile && <Sparkles size={20} />}
+        <span>Custom</span>
+      </Link>
+      <Link
+        to="/profile"
         onClick={onClick}
         className={`transition hover:text-foreground ${
           mobile
@@ -141,7 +231,7 @@ export default function Header() {
         </nav>
 
         <div className="flex items-center gap-3">
-          <Link to="/onboarding">
+          <Link to="/profile">
             <Avatar className="h-8 w-8 border border-border transition hover:ring-2 hover:ring-primary/20">
               <AvatarImage
                 src="https://placehold.co/64x64?text=ME"
@@ -156,27 +246,22 @@ export default function Header() {
             </Avatar>
           </Link>
 
-          <Link
-            to="/admin/debug"
-            className="hidden items-center gap-1 text-xs font-medium text-muted-foreground transition hover:text-foreground sm:inline-flex"
-          >
-            <Activity className="h-3.5 w-3.5" />
-            <span>Lab</span>
-          </Link>
+          {student ? (
+            <div className="flex items-center gap-2">
+              <span className="hidden text-xs text-muted-foreground sm:inline">
+                {student.email || student.name || 'Signed in'}
+              </span>
+              <Button variant="outline" size="sm" onClick={handleLogout} disabled={authLoading}>
+                {authLoading ? '...' : 'Log out'}
+              </Button>
+            </div>
+          ) : (
+            <Button variant="default" size="sm" onClick={handleLogin} disabled={authLoading}>
+              {authLoading ? '...' : 'Sign in'}
+            </Button>
+          )}
 
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleTheme}
-            className="h-8 w-8 rounded-full"
-          >
-            {isDark ? (
-              <SunMedium className="h-4 w-4" />
-            ) : (
-              <MoonStar className="h-4 w-4" />
-            )}
-            <span className="sr-only">Toggle theme</span>
-          </Button>
+          {/* Hide admin lab entry in demo/login-first flows */}
         </div>
       </div>
     </header>

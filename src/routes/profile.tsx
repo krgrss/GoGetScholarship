@@ -21,6 +21,31 @@ function ProfilePage() {
   const [ranking, setRanking] = React.useState<any[] | null>(null)
   const [rerankError, setRerankError] = React.useState<string | null>(null)
 
+  // Load saved profile from localStorage on mount
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+
+    const savedStudentId =
+      localStorage.getItem('scholarship_student_id') || localStorage.getItem('student_id')
+    if (savedStudentId) {
+      setStudentId(savedStudentId)
+    }
+
+    const savedProfile = localStorage.getItem('scholarship_profile')
+    if (savedProfile) {
+      try {
+        const profile = JSON.parse(savedProfile)
+        if (profile.name) setName(profile.name)
+        if (profile.gpa) setGpa(String(profile.gpa))
+        if (profile.major || profile.program) setMajor(profile.major || profile.program)
+        if (profile.country) setCountry(profile.country)
+        if (profile.stories || profile.aboutText) setStories(profile.stories || profile.aboutText)
+      } catch (e) {
+        console.error('Failed to parse saved profile:', e)
+      }
+    }
+  }, [])
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault()
     setLoading(true)
@@ -36,7 +61,7 @@ function ProfilePage() {
       country && `Country: ${country.trim()}`,
       stories && `Stories: ${stories.trim()}`,
     ].filter(Boolean)
-    const student_summary = parts.join('\n').trim() || 'Student profile summary'
+    const student_summary = parts.join('\\n').trim() || 'Student profile summary'
     setStudentSummary(student_summary)
 
     try {
@@ -336,14 +361,10 @@ function ProfilePage() {
                           <Link
                             to="/scholarship/$id"
                             params={{ id: String(r.id) }}
-                            search={
-                              studentSummary
-                                ? {
-                                    studentSummary,
-                                    studentId: studentId ?? undefined,
-                                  }
-                                : undefined
-                            }
+                            search={{
+                              score: typeof r.score === 'number' ? Math.round(r.score) : undefined,
+                              eligibility: undefined,
+                            }}
                             className="text-xs font-medium text-primary underline underline-offset-4"
                           >
                             {r.name}

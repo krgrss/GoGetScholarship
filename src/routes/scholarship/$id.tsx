@@ -46,6 +46,14 @@ import { Textarea } from '@/components/ui/textarea'
 
 export const Route = createFileRoute('/scholarship/$id')({
   component: ScholarshipDetailPage,
+  validateSearch: (search) => {
+    const raw = Number((search as any)?.score)
+    const score = Number.isFinite(raw) ? Math.max(0, Math.min(100, Math.round(raw))) : undefined
+    const eligibility = (search as any)?.eligibility
+    const eligibilityFlag =
+      eligibility === 'ineligible' || eligibility === 'eligible' ? eligibility : undefined
+    return { score, eligibility: eligibilityFlag }
+  },
 })
 
 type ApiScholarship = {
@@ -111,8 +119,97 @@ type PlanTask = {
   completed?: boolean
 }
 
+function normalizeValue(value?: string | null) {
+  return value ? value.trim().toLowerCase() : ''
+}
+
+function normalizeCountry(value?: string | null) {
+  const v = normalizeValue(value)
+  const map: Record<string, string> = {
+    us: 'us',
+    usa: 'us',
+    'united states': 'us',
+    united_states: 'us',
+    ca: 'ca',
+    canada: 'ca',
+    uk: 'uk',
+    'united kingdom': 'uk',
+    gb: 'uk',
+    australia: 'au',
+    au: 'au',
+  }
+  return map[v] || v
+}
+
+function normalizeGpa(profile?: any): number | undefined {
+  if (!profile) return undefined
+  const raw = profile.gpa ? Number(profile.gpa) : NaN
+  const scale = profile.gpaScale ? Number(profile.gpaScale) : 4
+  if (Number.isNaN(raw)) return undefined
+  if (!scale || scale === 4 || scale === 4.0) return raw
+  if (scale === 100) return Number((raw / 25).toFixed(2))
+  return raw
+}
+
+function evaluateEligibility(scholarship?: ApiScholarship | null, profile?: any | null) {
+  if (!scholarship || !profile) return { status: 'unknown' as const, reasons: [] as string[] }
+  const reasons: string[] = []
+  let ineligible = false
+
+  const profileCountry = normalizeCountry(profile.country)
+  const profileCitizenship = normalizeValue(profile.citizenship)
+  const profileGpa = normalizeGpa(profile)
+  const profileTags: string[] = Array.isArray(profile.backgroundTags)
+    ? profile.backgroundTags.map(normalizeValue).filter(Boolean)
+    : []
+
+  const countryEligibility = Array.isArray((scholarship.metadata as any)?.country_eligibility)
+    ? ((scholarship.metadata as any).country_eligibility as string[]).map(normalizeCountry)
+    : []
+  const scholarshipCountry = normalizeCountry(
+    scholarship.country || (scholarship.metadata as any)?.source_country,
+  )
+  if (profileCountry) {
+    if (countryEligibility.length && !countryEligibility.includes(profileCountry)) {
+      ineligible = true
+      reasons.push('Country not in eligibility list')
+    } else if (scholarshipCountry && scholarshipCountry !== profileCountry) {
+      reasons.push('Different country focus')
+    }
+  }
+
+  if (typeof scholarship.min_gpa === 'number' && profileGpa !== undefined && profileGpa < scholarship.min_gpa) {
+    ineligible = true
+    reasons.push('GPA below minimum')
+  }
+
+  const citizenshipReq = Array.isArray((scholarship.metadata as any)?.citizenship_requirements)
+    ? ((scholarship.metadata as any).citizenship_requirements as string[]).map(normalizeValue)
+    : []
+  if (profileCitizenship && citizenshipReq.length && !citizenshipReq.includes(profileCitizenship)) {
+    ineligible = true
+    reasons.push('Citizenship requirement not met')
+  }
+
+  const demographicReq = Array.isArray((scholarship.metadata as any)?.demographic_eligibility)
+    ? ((scholarship.metadata as any).demographic_eligibility as string[])
+        .map(normalizeValue)
+        .filter((t) => t && t !== 'none_specified')
+    : []
+  if (demographicReq.length && profileTags.length) {
+    const overlap = demographicReq.some((t) => profileTags.includes(t))
+    if (!overlap) {
+      ineligible = true
+      reasons.push('Demographic requirement not met')
+    }
+  }
+
+  return { status: ineligible ? ('ineligible' as const) : ('eligible' as const), reasons }
+}
+
 export function ScholarshipDetailPage() {
   const { id } = Route.useParams()
+  const { score, eligibility: eligibilityFlag } = Route.useSearch()
 
   const [data, setData] = React.useState<{
     scholarship: ApiScholarship
@@ -172,10 +269,64 @@ export function ScholarshipDetailPage() {
   const [profileAvailable, setProfileAvailable] = React.useState(false)
 
   React.useEffect(() => {
-    setProfileAvailable(
-      !!localStorage.getItem('scholarship_student_id') || !!localStorage.getItem('student_id'),
-    )
+    if (typeof window === 'undefined') return
+    const idFromStorage =
+      localStorage.getItem('scholarship_student_id') || localStorage.getItem('student_id')
+    setProfileAvailable(!!idFromStorage)
   }, [])
+
+  const personalityWeights = React.useMemo(() => {
+    const weights = data?.personality?.weights
+    if (!weights) return []
+    const entries = Object.entries(weights).sort((a, b) => b[1] - a[1]).slice(0, 6)
+    const max = entries[0]?.[1] ?? 1
+    return entries.map(([key, value]) => ({
+      key,
+      value,
+      pct: Math.min(100, Math.round((value / (max || 1)) * 100)),
+    }))
+  }, [data?.personality?.weights])
+
+  const aiBusy =
+    draftLoading ||
+    gradeLoading ||
+    explainFitLoading ||
+    planLoading ||
+    compareLoading ||
+    reviseLoading
+
+  const aiStatus = React.useMemo(() => {
+    if (draftLoading) return 'Drafting with AI…'
+    if (gradeLoading) return 'Grading against rubric…'
+    if (compareLoading) return 'Comparing essays…'
+    if (explainFitLoading) return 'Analyzing fit…'
+    if (planLoading) return 'Building plan…'
+    if (reviseLoading) return 'Revising by criterion…'
+    return ''
+  }, [draftLoading, gradeLoading, compareLoading, explainFitLoading, planLoading, reviseLoading])
+
+  const displayMatchScore =
+    typeof score === 'number' && Number.isFinite(score)
+      ? Math.max(0, Math.min(100, Math.round(score)))
+      : null
+
+  const eligibilityStatus = React.useMemo(
+    () => evaluateEligibility(data?.scholarship ?? null, profileJson),
+    [data?.scholarship, profileJson],
+  )
+  const isIneligible =
+    eligibilityFlag === 'ineligible' || eligibilityStatus.status === 'ineligible'
+  const effectiveMatchScore = isIneligible ? 0 : displayMatchScore
+  const matchFitLabel =
+    effectiveMatchScore != null
+      ? effectiveMatchScore >= 75
+        ? 'High fit'
+        : effectiveMatchScore >= 50
+          ? 'Medium fit'
+          : 'Lower fit'
+      : isIneligible
+        ? 'Likely ineligible'
+        : 'Not ranked'
 
   const pipeline = React.useMemo(
     () =>
@@ -417,9 +568,9 @@ export function ScholarshipDetailPage() {
       []
 
     const academicSummary =
-      (min_gpa != null || (level && level.length)) && essaysCount > 0
+      (scholarship.min_gpa != null || (level && level.length)) && essaysCount > 0
         ? 'Academic: requirements listed'
-        : min_gpa != null || (level && level.length)
+        : scholarship.min_gpa != null || (level && level.length)
           ? 'Academic: requirements listed'
           : 'Academic: not specified'
     const geographicSummary =
@@ -861,6 +1012,15 @@ export function ScholarshipDetailPage() {
     }
   }
 
+  const tasksToShow = planTasks.length ? planTasks : localTasks
+  const tasksAreLocal = planTasks.length === 0
+  const timelineSteps = [
+    { label: 'Create plan on Dashboard', done: planTasks.length > 0 },
+    { label: 'Draft essay with AI coach', done: !!essayText },
+    { label: 'Grade against rubric', done: !!gradeResult },
+    { label: 'Revise weak criteria', done: !!revisedText },
+    { label: 'Check Low extra work options', done: scholarship?.workloadLabel === 'Light' },
+  ]
 
 
   if (loading && !scholarship) {
@@ -941,42 +1101,8 @@ export function ScholarshipDetailPage() {
     )
   }
 
-  const tasksToShow = planTasks.length ? planTasks : localTasks
-  const tasksAreLocal = planTasks.length === 0
-  const timelineSteps = [
-    { label: 'Create plan on Dashboard', done: planTasks.length > 0 },
-    { label: 'Draft essay with AI coach', done: !!essayText },
-    { label: 'Grade against rubric', done: !!gradeResult },
-    { label: 'Revise weak criteria', done: !!revisedText },
-    { label: 'Check Low extra work options', done: scholarship?.workloadLabel === 'Light' },
-  ]
-  const personalityWeights = React.useMemo(() => {
-    const weights = data?.personality?.weights
-    if (!weights) return []
-    const entries = Object.entries(weights).sort((a, b) => b[1] - a[1]).slice(0, 6)
-    const max = entries[0]?.[1] ?? 1
-    return entries.map(([key, value]) => ({
-      key,
-      value,
-      pct: Math.min(100, Math.round((value / (max || 1)) * 100)),
-    }))
-  }, [data?.personality?.weights])
-  const aiBusy =
-    draftLoading ||
-    gradeLoading ||
-    explainFitLoading ||
-    planLoading ||
-    compareLoading ||
-    reviseLoading
-  const aiStatus = React.useMemo(() => {
-    if (draftLoading) return 'Drafting with AI…'
-    if (gradeLoading) return 'Grading against rubric…'
-    if (compareLoading) return 'Comparing essays…'
-    if (explainFitLoading) return 'Analyzing fit…'
-    if (planLoading) return 'Building plan…'
-    if (reviseLoading) return 'Revising by criterion…'
-    return ''
-  }, [draftLoading, gradeLoading, compareLoading, explainFitLoading, planLoading, reviseLoading])
+
+
 
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-background pb-12">
@@ -1089,13 +1215,30 @@ export function ScholarshipDetailPage() {
                   )}
                 </div>
                 <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                  <span>Match 82 • High fit</span>
+                  <CheckCircle2
+                    className={`h-4 w-4 ${
+                      effectiveMatchScore != null && effectiveMatchScore >= 75
+                        ? 'text-green-600'
+                        : effectiveMatchScore != null && effectiveMatchScore >= 50
+                          ? 'text-amber-600'
+                          : 'text-muted-foreground'
+                    }`}
+                  />
+                  <span>
+                    {effectiveMatchScore != null
+                      ? `Match ${effectiveMatchScore} - ${matchFitLabel}`
+                      : 'Match score unavailable'}
+                  </span>
                 </div>
               </div>
               <p className="mt-2 text-xs text-muted-foreground">
                 Using your saved profile + embeddings to rank this scholarship.
               </p>
+              {isIneligible && (
+                <p className="mt-1 text-xs text-destructive">
+                  Likely ineligible based on your profile (country/GPA/demographics). Explain Fit may still work for debugging, but consider skipping this one.
+                </p>
+              )}
             </div>
 
             <section className="space-y-4" id="about">
@@ -1105,7 +1248,7 @@ export function ScholarshipDetailPage() {
                   variant="outline"
                   size="sm"
                   onClick={handleExplainFit}
-                  disabled={explainFitLoading}
+                  disabled={explainFitLoading || !profileAvailable}
                 >
                   {explainFitLoading ? (
                     <>
@@ -1120,6 +1263,11 @@ export function ScholarshipDetailPage() {
                   )}
                 </Button>
               </div>
+              {!profileAvailable && (
+                <p className="text-xs text-muted-foreground">
+                  Add a saved profile to unlock Explain Fit and planning actions.
+                </p>
+              )}
               <p className="leading-relaxed text-muted-foreground">
                 {scholarship?.description}
               </p>
@@ -1735,7 +1883,7 @@ export function ScholarshipDetailPage() {
                     size="sm"
                     className="gap-1 text-xs"
                     onClick={handlePlanApplication}
-                    disabled={planLoading}
+                    disabled={planLoading || !profileAvailable}
                   >
                     {planLoading ? (
                       <>
@@ -1762,6 +1910,11 @@ export function ScholarshipDetailPage() {
                     </Link>
                   </Button>
                 </div>
+                {!profileAvailable && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Save a profile to enable planning and dashboard syncing.
+                  </p>
+                )}
 
                 <div className="space-y-2 rounded-md border border-border bg-muted/20 p-3">
                   <p className="text-[11px] font-medium text-muted-foreground">
@@ -1945,5 +2098,6 @@ export function ScholarshipDetailPage() {
        </div>
      </div>
    </div>
- )
+  )
 }
+

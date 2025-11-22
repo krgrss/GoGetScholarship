@@ -124,7 +124,28 @@ function mapRecordToIngest(r) {
     country,
     fields,
     metadata,
+    rubric: generateRubric(r),
   }
+}
+
+function generateRubric(r) {
+  if (!r.personality_profile || !r.personality_profile.weights) return undefined
+  
+  const weights = r.personality_profile.weights
+  const rubric = []
+  
+  for (const [key, weight] of Object.entries(weights)) {
+    if (weight > 0) {
+      rubric.push({
+        id: key,
+        name: key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' '),
+        description: `Evaluate based on ${key.replace(/_/g, ' ')}`,
+        weight: Math.round(weight * 100)
+      })
+    }
+  }
+  
+  return rubric.length > 0 ? rubric : undefined
 }
 
 async function main() {

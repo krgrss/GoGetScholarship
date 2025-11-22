@@ -20,8 +20,15 @@ export async function dbHealth(): Promise<{ ok: boolean }> {
     const r = await pool.query('select 1 as ok')
     return { ok: r.rows?.length > 0 }
   } catch (e) {
-    const fs = await import('node:fs/promises');
-    await fs.appendFile('c:/Users/admin/Desktop/GoGetScholarship/my-scholarship-app/server-debug.log', `[${new Date().toISOString()}] DB Health Error: ${e}\nENV.DATABASE_URL present: ${!!ENV.DATABASE_URL}\n`);
+    try {
+      const fs = await import('node:fs/promises')
+      await fs.appendFile(
+        `${process.cwd()}/server-debug.log`,
+        `[${new Date().toISOString()}] DB Health Error: ${e}\nENV.DATABASE_URL present: ${!!ENV.DATABASE_URL}\n`,
+      )
+    } catch {
+      // ignore logging failure
+    }
     throw e;
   }
 }
@@ -216,7 +223,7 @@ export async function topKByEmbedding(
         or $8::boolean = false
         or (
           (s.metadata->>'financial_need_required')::boolean is true
-          or s.metadata ? 'financial_need_required' = false
+          or (s.metadata ? 'financial_need_required' = false)
         )
       )
       -- Demographic Eligibility (Hard Filter)
