@@ -1,362 +1,250 @@
-Welcome to your new TanStack app! 
+# GoGetScholarship
 
-# Getting Started
+> **AI scholarship coach that takes students from _“which scholarships?”_ to _“ready to submit”_.**
 
-To run this application:
+GoGetScholarship helps students:
 
-```bash
-pnpm install
-pnpm start
-```
+- discover **relevant, realistic** scholarships (not spammy lists),
+- understand **why** each one fits them (eligibility + demographic focus),
+- and get **rubric-aware coaching** on their essays inside a focused workspace.
 
-## API Quick Start
+Built during the Agentiiv hackathon as an end-to-end slice:  
+**Match → Plan → Draft → Refine.**
 
-Set environment variables in `.env` (see `.env.example`) and run the dev server.
+---
 
-If `ADMIN_API_KEY` is set, include one of these headers for admin routes:
+## ✨ Core features
 
-- `x-admin-key: $ADMIN_API_KEY`
-- `x-api-key: $ADMIN_API_KEY`
-- `Authorization: Bearer $ADMIN_API_KEY`
+### 1. Smart matching (not just a directory)
 
-Examples (PowerShell):
+- Short onboarding collects academics, background, constraints, and goals.
+- Matching engine combines:
+  - **Hard filters** – citizenship, level of study, GPA, deadlines, etc.
+  - **Semantic search + LLM reranking** – fit with the student’s profile and interests.
+- Each scholarship card shows:
+  - **“Why this fits you”** explanation.
+  - **Eligibility flags** when something is uncertain or needs manual checking.
+  - A rough **effort estimate** (essays, references, forms).
 
-```powershell
-# Retrieve or match (public)
-irm -Method Post http://localhost:3000/api/match -ContentType 'application/json' -Body '{
-  "student_summary": "CS student, 3.8 GPA, robotics projects, volunteer tutor",
-  "min_gpa": 3.2,
-  "k": 20
-}'
+### 2. Planner dashboard
 
-# Ingest scholarships (admin)
-$admin = 'change-me'
-irm -Method Post http://localhost:3000/api/ingest -ContentType 'application/json' -Headers @{ 'x-admin-key'=$admin } -Body '{
-  "scholarships": [
-    {
-      "name": "STEM Innovators Award",
-      "sponsor": "Acme Foundation",
-      "url": "https://example.com",
-      "raw_text": "Full description...",
-      "min_gpa": 3.5,
-      "country": "US",
-      "fields": ["STEM", "engineering"]
-    }
-  ]
-}'
+- Students can **swipe / star / shortlist** scholarships from the match page.
+- Planner lays them out by **deadline**, with:
+  - Auto-generated **task checklist** (essays, refs, forms, transcripts).
+  - Simple **workload hint** so they don’t stack 5 big essays in one week.
 
-# Personality profile (admin; optional persistence)
-irm -Method Post http://localhost:3000/api/personality -ContentType 'application/json' -Headers @{ 'x-admin-key'=$admin } -Body '{
-  "scholarship_id": "00000000-0000-0000-0000-000000000000",
-  "scholarship_name": "STEM Innovators Award",
-  "raw_text": "Full description text...",
-  "winner_texts": ["Snippet of past winner essay..."]
-}'
+### 3. Essay workspace
 
-# Essay draft (admin; optional persistence)
-irm -Method Post http://localhost:3000/api/draft -ContentType 'application/json' -Headers @{ 'x-admin-key'=$admin } -Body '{
-  "scholarship_id": "00000000-0000-0000-0000-000000000000",
-  "student_id": "11111111-1111-1111-1111-111111111111",
-  "scholarship_name": "STEM Innovators Award",
-  "scholarship_text": "(optional) text...",
-  "personality": { "weights": { "gpa":0.2, "projects":0.4, "leadership":0.2, "community":0.2, "need":0 }, "themes": ["innovation"], "tone": "formal and technical" },
-  "student_profile": { "name": "Alice", "gpa": 3.8, "major": "CS", "stories": ["Designed low-cost air sensors for city council demo..."] },
-  "word_target": 400
-}'
-```
+- Rich-text editor with an **AI sidebar**, not a one-click essay generator.
+- AI reads:
+  - The **prompt** and any rubric text.
+  - The **student profile** (from onboarding).
+  - Relevant context about the scholarship.
+- It can:
+  - Suggest **outlines** and story angles using the student’s real experiences.
+  - Give **rubric-aware feedback** (clarity, impact, specificity, structure).
+  - Propose line-level edits with explanations so the student learns *why*.
 
-Notes:
+### 4. Winner stories (RAG-powered, WIP)
 
-- `/api/retrieve` behaves like `/api/match`.
-- Admin routes may respond 401 if the key is missing.
-- Payloads are capped in size by the API to prevent abuse.
-- Default rate limits (per client): match/retrieve 30/min, personality 10/min, draft 10/min, ingest 5/min.
+- Optional store of **winner stories / example essays**.
+- Used as **teaching material**, not text to copy:
+  - AI surfaces patterns (impact, quantified results, reflection).
+  - Student keeps their own voice and content.
 
-# Building For Production
+---
 
-To build this application for production:
+## 🧱 Tech stack
 
-```bash
-pnpm build
-```
+**Frontend & app framework**
 
-## Testing
+- React + TypeScript  
+- TanStack Start – file-based routing, server functions  
+- Tailwind CSS + shadcn/ui for UI kit and design tokens
 
-This project uses [Vitest](https://vitest.dev/) for testing. You can run the tests with:
+**Backend & AI**
 
-```bash
-pnpm test
-```
+- Node.js (via TanStack Start server functions)  
+- PostgreSQL for relational data  
+- Vector search (pgvector-style) for embeddings (scholarships, winner stories)  
+- Claude for matching explanations and essay coaching  
+  - Model choice is configurable via environment variables
 
-## Styling
+**Tooling**
 
-This project uses [Tailwind CSS](https://tailwindcss.com/) for styling.
+- `pnpm` (recommended) or `npm` / `yarn`
+- SQL scripts for schema + seed data in `sql/`
+- Additional helper scripts in `scripts/`
 
+---
 
+## 🗂 Project structure
 
-## Shadcn
+> This reflects the intended repo layout; trim folders as you clean up.
 
-Add components using the latest version of [Shadcn](https://ui.shadcn.com/).
+    .
+    ├── src/                # TanStack Start app (routes, components, server functions)
+    │   ├── routes/         # UI routes + loaders/actions
+    │   ├── components/     # Reusable UI components
+    │   ├── server/         # Server utilities (db, AI client, etc.)
+    │   └── lib/            # Domain helpers (matching, scoring, etc.)
+    ├── public/             # Static assets (favicons, og images, etc.)
+    ├── data/               # Sample data / fixtures (personas, demo profiles)
+    ├── sql/                # SQL schema + seed scripts for Postgres
+    ├── scripts/            # One-off scripts (ingest JSON, seed DB, etc.)
+    ├── prompts/            # Prompt templates for matching & essay coaching
+    ├── docs/               # Architecture, product requirements, UX flows
+    ├── .env.example        # Template for environment variables
+    ├── package.json
+    └── README.md
 
-```bash
-pnpx shadcn@latest add button
-```
+As you delete legacy folders, update this tree to match reality.
 
+---
 
+## ⚙️ Getting started (local dev)
 
-## Routing
-This project uses [TanStack Router](https://tanstack.com/router). The initial setup is a file based router. Which means that the routes are managed as files in `src/routes`.
+### 1. Prerequisites
 
-### Adding A Route
+- Node.js **≥ 20**
+- `pnpm` (recommended) – or swap `pnpm` for `npm` / `yarn` in commands
+- A running PostgreSQL instance (local, Docker, or Neon/Cloud)
 
-To add a new route to your application just add another a new file in the `./src/routes` directory.
+### 2. Clone and install
 
-TanStack will automatically generate the content of the route file for you.
+    git clone <your-repo-url> gogetscholarship
+    cd gogetscholarship
+    pnpm install
 
-Now that you have two routes you can use a `Link` component to navigate between them.
+### 3. Configure environment variables
 
-### Adding Links
+Copy the example file and fill in values:
 
-To use SPA (Single Page Application) navigation you will need to import the `Link` component from `@tanstack/react-router`.
+    cp .env.example .env
 
-```tsx
-import { Link } from "@tanstack/react-router";
-```
+### 4. Set up the database
 
-Then anywhere in your JSX you can use it like so:
+Run your schema + seed scripts. If you’ve wired npm scripts, this might look like:
 
-```tsx
-<Link to="/about">About</Link>
-```
+    # Example – adjust to whatever is in package.json
+    pnpm db:migrate    # apply sql migrations
+    pnpm db:seed       # seed sample scholarships + demo personas
 
-This will create a link that will navigate to the `/about` route.
+If you don’t have CLI scripts yet, you can execute the `.sql` files in `sql/` manually via `psql` or a GUI client.
 
-More information on the `Link` component can be found in the [Link documentation](https://tanstack.com/router/v1/docs/framework/react/api/router/linkComponent).
+### 5. Run the dev server
 
-### Using A Layout
+    pnpm dev
 
-In the File Based Routing setup the layout is located in `src/routes/__root.tsx`. Anything you add to the root route will appear in all the routes. The route content will appear in the JSX where you use the `<Outlet />` component.
+Then open:
 
-Here is an example layout that includes a header:
+- App: `http://localhost:3000` (TanStack Start dev server)
 
-```tsx
-import { Outlet, createRootRoute } from '@tanstack/react-router'
-import { TanStackRouterDevtools } from '@tanstack/react-router-devtools'
+---
 
-import { Link } from "@tanstack/react-router";
+## 🧪 Demo personas
 
-export const Route = createRootRoute({
-  component: () => (
-    <>
-      <header>
-        <nav>
-          <Link to="/">Home</Link>
-          <Link to="/about">About</Link>
-        </nav>
-      </header>
-      <Outlet />
-      <TanStackRouterDevtools />
-    </>
-  ),
-})
-```
+You can use these profiles when demoing the app.
 
-The `<TanStackRouterDevtools />` component is not required so you can remove it if you don't want it in your layout.
+### Example 1 – Maya (international CS student, high need)
 
-More information on layouts can be found in the [Layouts documentation](https://tanstack.com/router/latest/docs/framework/react/guide/routing-concepts#layouts).
+- 2nd-year Computer Science + Stats at the University of Toronto, GPA ≈ 3.8  
+- International student from Malaysia, first-generation  
+- Volunteers teaching Python to newcomer high-school students  
+- Works part-time in a campus café → wants **fewer, high-value awards**  
 
+Good match types:
 
-## Data Fetching
+- STEM / CS scholarships  
+- Women in tech / women in STEM  
+- First-generation and high-need awards  
+- Community service / leadership scholarships  
 
-There are multiple ways to fetch data in your application. You can use TanStack Query to fetch data from a server. But you can also use the `loader` functionality built into TanStack Router to load the data for a route before it's rendered.
+### Example 2 – Diego (social work, community mental health)
 
-For example:
+- 3rd-year Social Work student in Calgary, GPA ≈ 3.5  
+- Child of Mexican immigrants, first-gen, bilingual (English/Spanish)  
+- Works as a support worker + volunteers at a food bank and peer mental health program  
+- Needs scholarships to cut back work hours during practicum  
 
-```tsx
-const peopleRoute = createRoute({
-  getParentRoute: () => rootRoute,
-  path: "/people",
-  loader: async () => {
-    const response = await fetch("https://swapi.dev/api/people");
-    return response.json() as Promise<{
-      results: {
-        name: string;
-      }[];
-    }>;
-  },
-  component: () => {
-    const data = peopleRoute.useLoaderData();
-    return (
-      <ul>
-        {data.results.map((person) => (
-          <li key={person.name}>{person.name}</li>
-        ))}
-      </ul>
-    );
-  },
-});
-```
+Good match types:
 
-Loaders simplify your data fetching logic dramatically. Check out more information in the [Loader documentation](https://tanstack.com/router/latest/docs/framework/react/guide/data-loading#loader-parameters).
+- Social work / human services  
+- Community service and leadership  
+- Mental health / community impact awards  
+- First-generation and financial-need-based scholarships  
 
-### React-Query
+You can store these under `data/demo_profiles/` or seed them into the DB for nicer demos.
 
-React-Query is an excellent addition or alternative to route loading and integrating it into you application is a breeze.
+---
 
-First add your dependencies:
+## 🏗 High-level architecture
 
-```bash
-pnpm add @tanstack/react-query @tanstack/react-query-devtools
-```
+**Frontend**
 
-Next we'll need to create a query client and provider. We recommend putting those in `main.tsx`.
+- TanStack Start routes for:
+  - Onboarding / profile
+  - Match view (swipe / shortlist)
+  - Scholarship detail + “Why this fits you”
+  - Planner dashboard
+  - Essay workspace
+  - (Optional) Winner stories browser
 
-```tsx
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+**Backend / API**
 
-// ...
+- TanStack Start server functions / API routes, e.g.:
 
-const queryClient = new QueryClient();
+  - `GET /api/matches` – fetch scholarships for a given student
+  - `POST /api/explain-fit` – explain why a scholarship fits
+  - `POST /api/plan` – build checklist / timeline for a scholarship
+  - `POST /api/coach-essay` – rubric-aware feedback and suggestions
 
-// ...
+- PostgreSQL tables (example):
 
-if (!rootElement.innerHTML) {
-  const root = ReactDOM.createRoot(rootElement);
+  - `students`, `student_profiles`  
+  - `scholarships`  
+  - `applications`, `tasks`  
+  - (Optional) `winner_stories`, `essay_examples`
 
-  root.render(
-    <QueryClientProvider client={queryClient}>
-      <RouterProvider router={router} />
-    </QueryClientProvider>
-  );
-}
-```
+- Vector columns for semantic search over scholarship text and winner-story snippets.
 
-You can also add TanStack Query Devtools to the root route (optional).
+**AI / RAG flow**
 
-```tsx
-import { ReactQueryDevtools } from "@tanstack/react-query-devtools";
+1. **Embeddings**  
+   - Compute embeddings for scholarships and winner-story chunks.  
+2. **Retrieval**  
+   - Filter by hard constraints (citizenship, GPA, level, deadline).  
+   - Use vector similarity search to get candidate scholarships and examples.  
+3. **LLM reasoning**  
+   - Compose a prompt with:
+     - Student profile
+     - Scholarship fields
+     - Any relevant winner-story snippets / rubrics  
+   - Model scores and reranks candidates, generates:
+     - “Why this fits you” explanations
+     - Planner suggestions (effort estimate, tasks)
+     - Essay feedback and line-level edits
 
-const rootRoute = createRootRoute({
-  component: () => (
-    <>
-      <Outlet />
-      <ReactQueryDevtools buttonPosition="top-right" />
-      <TanStackRouterDevtools />
-    </>
-  ),
-});
-```
+---
 
-Now you can use `useQuery` to fetch your data.
+## 🛣 Roadmap (post-hackathon)
 
-```tsx
-import { useQuery } from "@tanstack/react-query";
+- ✅ MVP: end-to-end slice from onboarding → matches → planner → essay coaching.
+- ⏭ Scale the scholarship dataset and clean eligibility fields for more regions.
+- ⏭ Add counselor / mentor views for schools and nonprofits.
+- ⏭ Track outcomes (submitted, shortlisted, won) to improve matching and prompts.
+- ⏭ Explore fairness metrics for which scholarships are surfaced to which students.
 
-import "./App.css";
+---
 
-function App() {
-  const { data } = useQuery({
-    queryKey: ["people"],
-    queryFn: () =>
-      fetch("https://swapi.dev/api/people")
-        .then((res) => res.json())
-        .then((data) => data.results as { name: string }[]),
-    initialData: [],
-  });
+## 📄 License
 
-  return (
-    <div>
-      <ul>
-        {data.map((person) => (
-          <li key={person.name}>{person.name}</li>
-        ))}
-      </ul>
-    </div>
-  );
-}
+- MIT
 
-export default App;
-```
+---
 
-You can find out everything you need to know on how to use React-Query in the [React-Query documentation](https://tanstack.com/query/latest/docs/framework/react/overview).
+## 🙋‍♀️ Contributing
 
-## State Management
+This is currently a hackathon-stage codebase. Contribution are open
+- The database schema.
 
-Another common requirement for React applications is state management. There are many options for state management in React. TanStack Store provides a great starting point for your project.
-
-First you need to add TanStack Store as a dependency:
-
-```bash
-pnpm add @tanstack/store
-```
-
-Now let's create a simple counter in the `src/App.tsx` file as a demonstration.
-
-```tsx
-import { useStore } from "@tanstack/react-store";
-import { Store } from "@tanstack/store";
-import "./App.css";
-
-const countStore = new Store(0);
-
-function App() {
-  const count = useStore(countStore);
-  return (
-    <div>
-      <button onClick={() => countStore.setState((n) => n + 1)}>
-        Increment - {count}
-      </button>
-    </div>
-  );
-}
-
-export default App;
-```
-
-One of the many nice features of TanStack Store is the ability to derive state from other state. That derived state will update when the base state updates.
-
-Let's check this out by doubling the count using derived state.
-
-```tsx
-import { useStore } from "@tanstack/react-store";
-import { Store, Derived } from "@tanstack/store";
-import "./App.css";
-
-const countStore = new Store(0);
-
-const doubledStore = new Derived({
-  fn: () => countStore.state * 2,
-  deps: [countStore],
-});
-doubledStore.mount();
-
-function App() {
-  const count = useStore(countStore);
-  const doubledCount = useStore(doubledStore);
-
-  return (
-    <div>
-      <button onClick={() => countStore.setState((n) => n + 1)}>
-        Increment - {count}
-      </button>
-      <div>Doubled - {doubledCount}</div>
-    </div>
-  );
-}
-
-export default App;
-```
-
-We use the `Derived` class to create a new store that is derived from another store. The `Derived` class has a `mount` method that will start the derived store updating.
-
-Once we've created the derived store we can use it in the `App` component just like we would any other store using the `useStore` hook.
-
-You can find out everything you need to know on how to use TanStack Store in the [TanStack Store documentation](https://tanstack.com/store/latest).
-
-# Demo files
-
-Files prefixed with `demo` can be safely deleted. They are there to provide a starting point for you to play around with the features you've installed.
-
-# Learn More
-
-You can learn more about all of the offerings from TanStack in the [TanStack documentation](https://tanstack.com).
