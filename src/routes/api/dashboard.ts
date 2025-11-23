@@ -71,13 +71,13 @@ export const Route = createFileRoute('/api/dashboard')({
           const hasDrafts = Boolean(tableCheck.rows?.[0]?.drafts)
 
           const selectColumns = [
-            'a.id as application_id',
+            'a.id::text as application_id',
             'a.status as application_status',
-            's.id as scholarship_id',
+            's.id::text as scholarship_id',
             's.name as scholarship_name',
             's.sponsor',
             's.metadata',
-            hasDrafts ? "coalesce(d.id, '') as draft_id" : "'' as draft_id",
+            hasDrafts ? "coalesce(d.id::text, '') as draft_id" : "'' as draft_id",
             hasDrafts ? "coalesce(d.content, '') as draft_content" : "'' as draft_content",
             hasPlans && hasTasks
               ? 'coalesce(task_counts.total_tasks, 0) as total_tasks'
