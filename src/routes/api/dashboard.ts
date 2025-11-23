@@ -58,31 +58,56 @@ export const Route = createFileRoute('/api/dashboard')({
         }
 
         try {
+          const tableCheck = await pool.query(
+            `select
+               to_regclass('public.application_plans') as plans,
+               to_regclass('public.application_tasks') as tasks,
+               to_regclass('public.drafts') as drafts
+             `,
+          )
+
+          const hasPlans = Boolean(tableCheck.rows?.[0]?.plans)
+          const hasTasks = Boolean(tableCheck.rows?.[0]?.tasks)
+          const hasDrafts = Boolean(tableCheck.rows?.[0]?.drafts)
+
+          const selectColumns = [
+            'a.id as application_id',
+            'a.status as application_status',
+            's.id as scholarship_id',
+            's.name as scholarship_name',
+            's.sponsor',
+            's.metadata',
+            hasDrafts ? "coalesce(d.id, '') as draft_id" : "'' as draft_id",
+            hasDrafts ? "coalesce(d.content, '') as draft_content" : "'' as draft_content",
+            hasPlans && hasTasks
+              ? 'coalesce(task_counts.total_tasks, 0) as total_tasks'
+              : '0 as total_tasks',
+            hasPlans && hasTasks
+              ? 'coalesce(task_counts.completed_tasks, 0) as completed_tasks'
+              : '0 as completed_tasks',
+          ]
+
+          const joins = [
+            'join scholarships s on s.id = a.scholarship_id',
+            hasDrafts
+              ? 'left join drafts d on d.student_id = a.student_id and d.scholarship_id = a.scholarship_id'
+              : null,
+            hasPlans && hasTasks
+              ? `left join lateral (
+                   select
+                     count(*) as total_tasks,
+                     count(*) filter (where completed) as completed_tasks
+                   from application_plans ap
+                   join application_tasks t on t.plan_id = ap.id
+                   where ap.application_id = a.id
+                 ) as task_counts on true`
+              : null,
+          ].filter((j): j is string => Boolean(j))
+
           const sql = `
-            select
-              a.id as application_id,
-              a.status as application_status,
-              s.id as scholarship_id,
-              s.name as scholarship_name,
-              s.sponsor,
-              s.metadata,
-              coalesce(d.id, '') as draft_id,
-              coalesce(d.content, '') as draft_content,
-              coalesce(task_counts.total_tasks, 0) as total_tasks,
-              coalesce(task_counts.completed_tasks, 0) as completed_tasks
+            select ${selectColumns.join(',\n              ')}
             from applications a
-            join scholarships s on s.id = a.scholarship_id
-            left join drafts d
-              on d.student_id = a.student_id
-             and d.scholarship_id = a.scholarship_id
-            left join lateral (
-              select
-                count(*) as total_tasks,
-                count(*) filter (where completed) as completed_tasks
-              from application_plans ap
-              join application_tasks t on t.plan_id = ap.id
-              where ap.application_id = a.id
-            ) as task_counts on true
+            ${joins.join('\n            ')}
             where a.student_id::text = $1::text
             order by a.created_at desc
           `

@@ -64,18 +64,18 @@ function DashboardPage() {
       setLoading(true)
       setError(null)
       try {
-      const rawId =
-        localStorage.getItem('scholarship_student_id') ||
-        localStorage.getItem('student_id') ||
-        ''
-      const studentId = rawId.trim()
+        const rawId =
+          localStorage.getItem('scholarship_student_id') ||
+          localStorage.getItem('student_id') ||
+          ''
+        const studentId = rawId.trim()
 
-      if (!studentId || !STUDENT_UUID.test(studentId)) {
-        setError('Load a saved student ID first (via Admin > Debug) before viewing the dashboard.')
-        return
-      }
+        if (!studentId || !STUDENT_UUID.test(studentId)) {
+          setError('Load a saved student ID first (via Admin > Debug) before viewing the dashboard.')
+          return
+        }
 
-      const res = await fetch(`/api/dashboard?student_id=${encodeURIComponent(studentId)}`)
+        const res = await fetch(`/api/dashboard?student_id=${encodeURIComponent(studentId)}`)
         const json = await res.json()
         if (!res.ok || !json.ok) {
           throw new Error(json?.error || `Dashboard request failed (${res.status})`)
