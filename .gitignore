@@ -11,3 +11,13 @@ count.txt
 .output
 .vinxi
 todos.json
+
+.vscode/
+docs/
+important/
+
+prompts/
+data/scholarships_3.json
+
+data/scholarships_clean_2.jsonl
+update/
