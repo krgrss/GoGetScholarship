@@ -25,6 +25,8 @@ export type MatchRow = {
   name: string
   url: string | null
   min_gpa: number | null
+  fields?: string[] | null
+  metadata?: any
   distance: number
   dot_sim: number
   score?: number
@@ -139,6 +141,7 @@ export async function runMatchWorkflow(req: MatchRequest): Promise<MatchResponse
     summary,
     minGpa: req.minGpa ?? null,
     k,
+    eligibility: req.eligibility ?? null,
     version: 1,
   })
 
@@ -169,7 +172,10 @@ export async function runMatchWorkflow(req: MatchRequest): Promise<MatchResponse
     const candidates = rows.map((r) => ({
       id: String(r.id),
       name: r.name,
-      snippet: '',
+      snippet:
+        (r.metadata?.description_raw as string | undefined) ||
+        (r.metadata?.raw_text as string | undefined) ||
+        '',
     }))
     const ranking = await rerankWithClaude(summary, candidates)
 

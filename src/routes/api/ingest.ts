@@ -49,6 +49,12 @@ const Scholarship = z.object({
   country: z.string().optional(),
   fields: z.array(z.string()).max(50).optional(),
   metadata: z.record(z.string(), z.any()).optional(),
+  rubric: z.array(z.object({
+    id: z.string(),
+    name: z.string(),
+    description: z.string().optional(),
+    weight: z.number().optional()
+  })).optional(),
 })
 
 /**
@@ -82,7 +88,19 @@ export const Route = createFileRoute('/api/ingest')({
         }
 
         const texts = body.scholarships.map((s) => s.raw_text)
-        const embeddings = await embedWithVoyage(texts)
+
+        let embeddings: number[][]
+        try {
+          embeddings = await embedWithVoyage(texts)
+        } catch (e: any) {
+          return new Response(
+            JSON.stringify({
+              ok: false,
+              error: `Embedding error: ${String(e)}`,
+            }),
+            { status: 500, headers: { 'Content-Type': 'application/json' } },
+          )
+        }
 
         if (embeddings.length !== body.scholarships.length) {
           return new Response(
@@ -125,11 +143,25 @@ export const Route = createFileRoute('/api/ingest')({
                values ($1, $2::vector)`,
               [id, JSON.stringify(embeddings[i])],
             )
+
+            if (s.rubric) {
+              await client.query(
+                `insert into scholarship_rubrics (scholarship_id, rubric, updated_at)
+                 values ($1, $2::jsonb, now())`,
+                [id, JSON.stringify(s.rubric)],
+              )
+            }
           }
           await client.query('COMMIT')
-        } catch (e) {
+        } catch (e: any) {
           await client.query('ROLLBACK')
-          throw e
+          return new Response(
+            JSON.stringify({
+              ok: false,
+              error: `Database error: ${String(e).slice(0, 4000)}`,
+            }),
+            { status: 500, headers: { 'Content-Type': 'application/json' } },
+          )
         } finally {
           client.release()
         }

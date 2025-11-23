@@ -13,7 +13,7 @@ import { pool } from '@/server/db'
 import { rateLimit } from '@/server/rateLimit'
 
 const IdParams = z.object({
-  id: z.string().uuid(),
+  id: z.string().min(1),
 })
 
 export const Route = createFileRoute('/api/scholarship/$id')({
@@ -36,6 +36,12 @@ export const Route = createFileRoute('/api/scholarship/$id')({
         }
         const { id } = parsed.data
 
+        // Decide whether `id` looks like a UUID (DB primary key) or an external key
+        // from the ingestion dataset (metadata.id such as "3m-national-student-fellowship-ca-ug-2025").
+        const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(
+          id,
+        )
+
         try {
           const { rows } = await pool.query(
             `
@@ -51,14 +57,36 @@ export const Route = createFileRoute('/api/scholarship/$id')({
                 s.metadata,
                 p.weights,
                 p.themes,
-                p.tone
+                p.tone,
+                (
+                  select coalesce(
+                    json_agg(
+                      json_build_object(
+                        'winner_name', w.winner_name,
+                        'year', w.year,
+                        'story_excerpt', w.story_excerpt,
+                        'themes', w.themes,
+                        'angle', w.angle,
+                        'source_url', w.source_url
+                      )
+                      order by coalesce(w.year, 0) desc, w.created_at desc
+                    ),
+                    '[]'::json
+                  )
+                  from scholarship_winners w
+                  where w.scholarship_id = s.id
+                ) as winners
               from scholarships s
               left join scholarship_profiles p
                 on p.scholarship_id = s.id
-              where s.id = $1::uuid
+              where
+                case
+                  when $2::boolean then s.id = $1::uuid
+                  else s.metadata->>'id' = $1::text
+                end
               limit 1
             `,
-            [id],
+            [id, isUuid],
           )
 
           if (rows.length === 0) {
@@ -80,6 +108,7 @@ export const Route = createFileRoute('/api/scholarship/$id')({
             country: row.country as string | null,
             fields: (row.fields as string[] | null) ?? null,
             metadata: row.metadata,
+            winners: Array.isArray(row.winners) ? (row.winners as any[]) : [],
           }
 
           const personality =
@@ -110,4 +139,3 @@ export const Route = createFileRoute('/api/scholarship/$id')({
     },
   },
 })
-

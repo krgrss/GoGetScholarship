@@ -1,12 +1,19 @@
-import { Link } from '@tanstack/react-router'
-
 import * as React from 'react'
-import { Activity, Home, Menu, MoonStar, Network, SunMedium, User, X } from 'lucide-react'
+import { Activity, Home, Menu, MoonStar, Network, Sparkles, SunMedium, User } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
+import { Button } from '@/components/ui/button'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from '@/components/ui/sheet'
 
 export default function Header() {
-  const [isOpen, setIsOpen] = React.useState(false)
-  const [isDark, setIsDark] = React.useState<boolean>(() => {
-    if (typeof window === 'undefined') return false
+  const [isDark, setIsDark] = React.useState(() => {
+    if (typeof document === 'undefined') return false
     return document.documentElement.classList.contains('dark')
   })
 
@@ -19,175 +26,137 @@ export default function Header() {
     }
   }, [isDark])
 
-  function toggleTheme() {
-    setIsDark((prev) => !prev)
-  }
+  const toggleTheme = () => setIsDark((prev) => !prev)
 
-  return (
+  const NavLinks = ({ mobile = false, onClick }: { mobile?: boolean; onClick?: () => void }) => (
     <>
-      <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
-        <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
-          <div className="flex items-center gap-3">
-            <button
-              onClick={() => setIsOpen(true)}
-              className="inline-flex items-center justify-center rounded-full border border-border bg-background p-2 text-muted-foreground shadow-sm transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-              aria-label="Open menu"
-            >
-              <Menu size={18} />
-            </button>
-            <Link to="/" className="flex items-baseline gap-2">
-              <span className="font-display text-lg tracking-tight">
-                GoGetScholarship
-              </span>
-              <span className="hidden text-[11px] font-medium uppercase text-muted-foreground sm:inline">
-                Studio
-              </span>
-            </Link>
-          </div>
-
-          <nav className="hidden items-center gap-4 text-xs font-medium text-muted-foreground md:flex">
-            <Link
-              to="/matches"
-              className="transition hover:text-foreground"
-              activeProps={{
-                className:
-                  'text-foreground underline decoration-primary/60 underline-offset-4',
-              }}
-            >
-              Matches
-            </Link>
-            <Link
-              to="/"
-              className="transition hover:text-foreground"
-              activeProps={{
-                className:
-                  'text-foreground underline decoration-primary/60 underline-offset-4',
-              }}
-            >
-              Dashboard
-            </Link>
-            <Link
-              to="/profile"
-              className="transition hover:text-foreground"
-              activeProps={{
-                className:
-                  'text-foreground underline decoration-primary/60 underline-offset-4',
-              }}
-            >
-              Profile
-            </Link>
-          </nav>
-
-          <div className="flex items-center gap-3">
-            <Link
-              to="/profile"
-              className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            >
-              <User className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Profile</span>
-            </Link>
-            <Link
-              to="/admin/debug"
-              className="hidden items-center gap-1 text-xs font-medium text-muted-foreground transition hover:text-foreground sm:inline-flex"
-            >
-              <Activity className="h-3.5 w-3.5" />
-              <span>Lab</span>
-            </Link>
-            <button
-              type="button"
-              onClick={toggleTheme}
-              className="inline-flex items-center gap-1 rounded-full border border-border bg-background px-3 py-1.5 text-xs font-medium text-muted-foreground shadow-sm transition hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 focus-visible:ring-offset-background"
-            >
-              {isDark ? (
-                <SunMedium className="h-3.5 w-3.5" />
-              ) : (
-                <MoonStar className="h-3.5 w-3.5" />
-              )}
-              <span className="hidden sm:inline">
-                {isDark ? 'Light mode' : 'Dark mode'}
-              </span>
-            </button>
-          </div>
-        </div>
-      </header>
-
-      <aside
-        className={`fixed top-0 left-0 z-50 flex h-full w-80 flex-col bg-card text-foreground shadow-2xl ring-1 ring-border transform transition-transform duration-300 ease-in-out ${
-          isOpen ? 'translate-x-0' : '-translate-x-full'
+      <Link
+        to="/matches"
+        onClick={onClick}
+        className={`transition hover:text-foreground ${
+          mobile
+            ? 'flex items-center gap-3 rounded-lg p-3 text-sm text-muted-foreground hover:bg-muted'
+            : 'text-sm font-medium text-muted-foreground'
         }`}
+        activeProps={{
+          className: mobile
+            ? 'flex items-center gap-3 rounded-lg bg-primary text-primary-foreground p-3 text-sm hover:bg-primary/90'
+            : 'text-foreground underline decoration-primary/60 underline-offset-4',
+        }}
       >
-        <div className="flex items-center justify-between border-b border-border p-4">
-          <h2 className="text-sm font-semibold text-muted-foreground">
-            Navigation
-          </h2>
-          <button
-            onClick={() => setIsOpen(false)}
-            className="rounded-full p-2 text-muted-foreground transition hover:bg-muted"
-            aria-label="Close menu"
-          >
-            <X size={24} />
-          </button>
-        </div>
-
-        <nav className="flex-1 overflow-y-auto p-4">
-          <Link
-            to="/matches"
-            onClick={() => setIsOpen(false)}
-            className="mb-2 flex items-center gap-3 rounded-lg p-3 text-sm text-muted-foreground transition hover:bg-muted"
-            activeProps={{
-              className:
-                'mb-2 flex items-center gap-3 rounded-lg bg-primary text-primary-foreground p-3 text-sm transition hover:bg-primary/90',
-            }}
-          >
-            <Network size={20} />
-            <span className="font-medium">Matches</span>
-          </Link>
-
-          <Link
-            to="/"
-            onClick={() => setIsOpen(false)}
-            className="mb-2 flex items-center gap-3 rounded-lg p-3 text-sm text-muted-foreground transition hover:bg-muted"
-            activeProps={{
-              className:
-                'mb-2 flex items-center gap-3 rounded-lg bg-primary text-primary-foreground p-3 text-sm transition hover:bg-primary/90',
-            }}
-          >
-            <Home size={20} />
-            <span className="font-medium">Dashboard</span>
-          </Link>
-
-          <Link
-            to="/profile"
-            onClick={() => setIsOpen(false)}
-            className="mb-2 flex items-center gap-3 rounded-lg p-3 text-sm text-muted-foreground transition hover:bg-muted"
-            activeProps={{
-              className:
-                'mb-2 flex items-center gap-3 rounded-lg bg-primary text-primary-foreground p-3 text-sm transition hover:bg-primary/90',
-            }}
-          >
-            <User size={20} />
-            <span className="font-medium">Profile</span>
-          </Link>
-
-          <Link
-            to="/admin/debug"
-            onClick={() => setIsOpen(false)}
-            className="mb-2 flex items-center gap-3 rounded-lg p-3 text-sm text-muted-foreground transition hover:bg-muted"
-            activeProps={{
-              className:
-                'mb-2 flex items-center gap-3 rounded-lg bg-primary text-primary-foreground p-3 text-sm transition hover:bg-primary/90',
-            }}
-          >
-            <Activity size={20} />
-            <span className="font-medium">Admin Lab</span>
-          </Link>
-        </nav>
-      </aside>
+        {mobile && <Network size={20} />}
+        <span>Matches</span>
+      </Link>
+      <Link
+        to="/dashboard"
+        onClick={onClick}
+        className={`transition hover:text-foreground ${
+          mobile
+            ? 'flex items-center gap-3 rounded-lg p-3 text-sm text-muted-foreground hover:bg-muted'
+            : 'text-sm font-medium text-muted-foreground'
+        }`}
+        activeProps={{
+          className: mobile
+            ? 'flex items-center gap-3 rounded-lg bg-primary text-primary-foreground p-3 text-sm hover:bg-primary/90'
+            : 'text-foreground underline decoration-primary/60 underline-offset-4',
+        }}
+      >
+        {mobile && <Home size={20} />}
+        <span>Dashboard</span>
+      </Link>
+      <Link
+        to="/custom"
+        onClick={onClick}
+        className={`transition hover:text-foreground ${
+          mobile
+            ? 'flex items-center gap-3 rounded-lg p-3 text-sm text-muted-foreground hover:bg-muted'
+            : 'text-sm font-medium text-muted-foreground'
+        }`}
+        activeProps={{
+          className: mobile
+            ? 'flex items-center gap-3 rounded-lg bg-primary text-primary-foreground p-3 text-sm hover:bg-primary/90'
+            : 'text-foreground underline decoration-primary/60 underline-offset-4',
+        }}
+      >
+        {mobile && <Sparkles size={20} />}
+        <span>Custom</span>
+      </Link>
+      <Link
+        to="/profile"
+        onClick={onClick}
+        className={`transition hover:text-foreground ${
+          mobile
+            ? 'flex items-center gap-3 rounded-lg p-3 text-sm text-muted-foreground hover:bg-muted'
+            : 'text-sm font-medium text-muted-foreground'
+        }`}
+        activeProps={{
+          className: mobile
+            ? 'flex items-center gap-3 rounded-lg bg-primary text-primary-foreground p-3 text-sm hover:bg-primary/90'
+            : 'text-foreground underline decoration-primary/60 underline-offset-4',
+        }}
+      >
+        {mobile && <User size={20} />}
+        <span>Profile</span>
+      </Link>
     </>
   )
+
+  return (
+    <header className="sticky top-0 z-40 border-b border-border bg-background/80 backdrop-blur">
+      <div className="mx-auto flex max-w-6xl items-center justify-between gap-4 px-4 py-3">
+        <div className="flex items-center gap-3">
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="outline" size="icon" className="md:hidden" aria-label="Open menu">
+                <Menu className="h-5 w-5" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="left" className="w-80 p-0">
+              <SheetHeader className="border-b p-4 text-left">
+                <SheetTitle>Navigation</SheetTitle>
+              </SheetHeader>
+              <nav className="flex flex-col gap-2 p-4">
+                <NavLinks mobile />
+                <Link
+                  to="/admin/debug"
+                  className="flex items-center gap-3 rounded-lg p-3 text-sm text-muted-foreground transition hover:bg-muted"
+                >
+                  <Activity size={20} />
+                  <span>Admin Lab</span>
+                </Link>
+              </nav>
+            </SheetContent>
+          </Sheet>
+          <Link to="/" className="flex items-baseline gap-2">
+            <span className="font-display text-lg tracking-tight">GoGetScholarship</span>
+            <span className="hidden text-[11px] font-medium uppercase text-muted-foreground sm:inline">
+              Studio
+            </span>
+          </Link>
+        </div>
+        <nav className="hidden items-center gap-6 md:flex">
+          <NavLinks />
+        </nav>
+        <div className="flex items-center gap-3">
+          <Link to="/profile">
+            <Avatar className="h-8 w-8 border border-border transition hover:ring-2 hover:ring-primary/20">
+              <AvatarImage
+                src="https://placehold.co/64x64?text=ME"
+                alt="User"
+                onError={(e) => {
+                  e.currentTarget.style.display = 'none'
+                }}
+              />
+              <AvatarFallback className="bg-muted text-xs font-medium text-muted-foreground">
+                ME
+              </AvatarFallback>
+            </Avatar>
+          </Link>
+          <Button variant="ghost" size="icon" onClick={toggleTheme} className="h-8 w-8 rounded-full">
+            {isDark ? <SunMedium className="h-4 w-4" /> : <MoonStar className="h-4 w-4" />}
+          </Button>
+        </div>
+      </div>
+    </header>
+  )
 }
-/**
- * App Header
- * - Simple navigation header rendered by the root shell
- * - Extend with links to key routes like /profile and /admin/debug
- */

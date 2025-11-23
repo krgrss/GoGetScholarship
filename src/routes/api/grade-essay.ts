@@ -103,7 +103,7 @@ export const Route = createFileRoute('/api/grade-essay')({
           })
         }
 
-        const rubricJson = JSON.stringify(input.rubric, null, 2)
+        const rubricJson = JSON.stringify(input.rubric)
 
         const system =
           'You are a rubric grading assistant for scholarship essays.\n' +
@@ -131,7 +131,7 @@ Rules:
   - "solid" if most criteria are 3-4 with room to improve.
   - "ready" if the essay is strong (mostly 4-5) and clearly aligned.
 
-## RUBRIC (from DB)
+## RUBRIC (from DB, minified JSON)
 ${rubricJson}
 
 ## ESSAY
@@ -144,7 +144,7 @@ Grade the essay against the rubric and fill in the JSON fields.
         const res = await askClaude({
           system,
           user,
-          max_tokens: 1200,
+          max_tokens: 700,
         })
 
         const durationMs = Date.now() - started
@@ -178,4 +178,3 @@ Grade the essay against the rubric and fill in the JSON fields.
     },
   },
 })
-

@@ -5,6 +5,8 @@
 -- - Embedding dimension defaults to 1024 (Voyage 3.5). Keep in sync with ENV.EMBED_DIM.
 -- - Use `vector_cosine_ops` for cosine distance `<=>` and HNSW index.
 
+-- Extensions
+CREATE EXTENSION IF NOT EXISTS pgcrypto; -- for gen_random_uuid
 -- Enable pgvector once
 CREATE EXTENSION IF NOT EXISTS vector;
 
@@ -112,10 +114,13 @@ CREATE TABLE applications (
   id              uuid PRIMARY KEY,
   student_id      uuid NOT NULL REFERENCES students(id) ON DELETE CASCADE,
   scholarship_id  uuid NOT NULL REFERENCES scholarships(id) ON DELETE CASCADE,
-  status          text NOT NULL,
+  status          text NOT NULL DEFAULT 'planned',
   created_at      timestamptz DEFAULT now(),
   updated_at      timestamptz DEFAULT now()
 );
+
+CREATE UNIQUE INDEX IF NOT EXISTS applications_student_scholarship_uidx
+  ON applications(student_id, scholarship_id);
 
 COMMENT ON TABLE applications IS 'Student applications for specific scholarships';
 COMMENT ON COLUMN applications.id IS 'Primary key (UUID)';
@@ -154,6 +159,59 @@ COMMENT ON COLUMN application_tasks.label IS 'Human-readable task label';
 COMMENT ON COLUMN application_tasks.due_date IS 'Target due date (if known)';
 COMMENT ON COLUMN application_tasks.completed IS 'Whether the task is completed';
 COMMENT ON COLUMN application_tasks.created_at IS 'Creation timestamp';
+
+CREATE INDEX IF NOT EXISTS application_tasks_plan_idx ON application_tasks(plan_id);
+
+-- Scholarship winners (ingested from data/winners.jsonl)
+CREATE TABLE IF NOT EXISTS scholarship_winners (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  scholarship_id uuid NOT NULL REFERENCES scholarships(id) ON DELETE CASCADE,
+  year int,
+  winner_name text,
+  story_excerpt text,
+  themes text[],
+  angle text,
+  source_url text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS scholarship_winners_scholarship_idx
+  ON scholarship_winners (scholarship_id, year DESC NULLS LAST);
+CREATE UNIQUE INDEX IF NOT EXISTS scholarship_winners_dedupe_idx
+  ON scholarship_winners (scholarship_id, coalesce(winner_name, ''), coalesce(year, 0));
+
+-- Essay versions/history (for workspace)
+CREATE TABLE IF NOT EXISTS essay_versions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id uuid NOT NULL,
+  scholarship_id uuid NOT NULL,
+  essay_id uuid,
+  content text NOT NULL,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  label text DEFAULT 'Auto-save',
+  overall_score int,
+  rubric jsonb,
+  UNIQUE(student_id, scholarship_id, created_at)
+);
+
+CREATE INDEX IF NOT EXISTS essay_versions_student_scholarship_idx
+  ON essay_versions (student_id, scholarship_id, created_at DESC);
+
+-- Cached essay ideas (hooks/prompts/gaps)
+CREATE TABLE IF NOT EXISTS essay_ideas (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  student_id uuid NOT NULL,
+  scholarship_id uuid NOT NULL,
+  essay_id uuid,
+  prompt text,
+  hooks text[],
+  story_prompts text[],
+  gaps text[],
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS essay_ideas_student_scholarship_idx
+  ON essay_ideas (student_id, scholarship_id, created_at DESC);
 
 -- HNSW index (negative inner product / dot product). Use L2 ops if you prefer Euclidean.
 CREATE INDEX scholarship_embeddings_hnsw_ip

@@ -325,6 +325,228 @@ For transparency, we should store:
 
 * Raw rubric text (if available).
 * Source URL where rubric came from.
+Here’s the “missing” spec block you can drop right after **6.2 Rubrics / criteria** in `data-ingestion-requirements.md` (or turn it into its own section if you prefer).
+
+````markdown
+### 6.3 Personality profile (derived traits & tone)
+
+For each scholarship, we derive a `personality_profile` JSON that captures what the scholarship
+*values* in applicants and how the copy “sounds”.
+
+Target structure (aligned with `scholarships` JSON schema):
+
+```json
+"personality_profile": {
+  "weights": {
+    "academics": 0.2,
+    "leadership": 0.2,
+    "community": 0.25,
+    "financial_need": 0.2,
+    "research": 0.0,
+    "extracurriculars": 0.05,
+    "background": 0.1,
+    "innovation": 0.0
+  },
+  "themes": [
+    "character",
+    "service",
+    "leadership potential"
+  ],
+  "tone": {
+    "style": "inspirational",
+    "voice": "story-driven",
+    "keywords": [
+      "courage",
+      "commitment",
+      "potential"
+    ]
+  },
+  "constraints": {
+    "must_study_in_country": "CA",
+    "min_gpa": null
+  }
+}
+````
+
+#### 6.3.1 Input signals
+
+Derive the profile from:
+
+* `description_raw`
+* `eligibility_raw`
+* `essay_prompts_raw` / `essay_prompts`
+* `rubric` (if present)
+* Structured fields:
+
+  * `min_gpa`, `gpa_scale`
+  * `financial_need_required`
+  * `demographic_eligibility[]`
+  * `country_eligibility[]`, `citizenship_requirements[]`
+  * `level_of_study[]`, `fields_of_study[]`
+
+We can use an offline LLM (Claude) to help, but final values must be consistent with these inputs.
+
+#### 6.3.2 Weight dimensions
+
+We use a fixed 8-dimension frame:
+
+* `academics`
+* `leadership`
+* `community`
+* `financial_need`
+* `research`
+* `extracurriculars`
+* `background`
+* `innovation`
+
+**Step 1 – Raw 0–3 scores**
+
+For each dimension, assign an integer score `s_i` in `{0,1,2,3}`:
+
+* `0` – not mentioned / clearly irrelevant
+* `1` – mentioned but secondary (“nice to have”)
+* `2` – clearly important (one of several main criteria)
+* `3` – core defining feature / strongly emphasized
+
+Examples of mapping:
+
+* **academics**
+
+  * 3: high GPA cutoff (e.g. ≥3.7/4) or “outstanding academic achievement” is central.
+  * 2: GPA cutoff + some academic language but shared with other criteria.
+  * 1: “good academic standing” only.
+  * 0: no clear academic expectations.
+
+* **leadership**
+
+  * Look for “leadership”, “captain”, “president”, “founded”, “led initiative”, etc.
+
+* **community**
+
+  * Look for “community service”, “volunteering”, “giving back”, “impact”, etc.
+
+* **financial_need**
+
+  * 3: explicitly “need-based” / “must demonstrate financial need.”
+  * 2: “preference given to students with financial need.”
+  * 1: vague mention of hardship or barriers.
+  * 0: no need language; merit-only.
+
+* **research**
+
+  * Research projects, labs, theses, publications, “undergraduate research”.
+
+* **extracurriculars**
+
+  * Sports, arts, clubs, competitions, “well-rounded involvement”.
+
+* **background**
+
+  * First-gen, specific ethnic/racial groups, gender, disability, rural/region, etc.
+
+* **innovation**
+
+  * Entrepreneurship, startups, “innovative solutions”, hackathons, “creative problem-solving”.
+
+**Step 2 – Heuristic bumps from structured fields**
+
+After reading text, adjust scores using structured signals (capped at 3):
+
+* If `financial_need_required == true` → `financial_need += 1`.
+* If `min_gpa` is high (e.g. ≥3.7/4 or equivalent) → `academics += 1`.
+* If `demographic_eligibility[]` is non-empty and specific
+  (e.g. Indigenous, women in STEM, first-gen) → `background += 1`.
+* If `fields_of_study[]` heavily research-ish (e.g. “research-based MSc/PhD”)
+  → `research += 1`.
+
+**Step 3 – Normalize to weights**
+
+Let `s_i` be final scores for each dimension, and `S = sum(s_i)`.
+
+* If `S > 0`, define:
+
+  [
+  w_i = \frac{s_i}{S}
+  ]
+
+  and set `weights[dimension] = w_i` rounded to 2 decimal places.
+* If `S == 0` (no clear signals), set a near-uniform low-information vector, e.g.:
+
+  ```json
+  {
+    "academics": 0.2,
+    "leadership": 0.1,
+    "community": 0.1,
+    "financial_need": 0.1,
+    "research": 0.1,
+    "extracurriculars": 0.2,
+    "background": 0.1,
+    "innovation": 0.1
+  }
+  ```
+
+and mark in internal notes that the profile is “low confidence”.
+
+#### 6.3.3 Themes
+
+`themes` is a short list (3–6 items) of phrases summarizing what the scholarship cares about.
+
+* Derive from:
+
+  * Most important dimensions (highest `weights`).
+  * Repeated phrases in description/eligibility/essays.
+
+Examples:
+
+* `"first-generation success"`, `"service to community"`, `"women in STEM leadership"`,
+  `"innovation for social impact"`.
+
+Rules:
+
+* Use scholarship’s own language when possible.
+* No more than ~5 words per theme.
+
+#### 6.3.4 Tone
+
+`tone` describes how the scholarship “speaks”:
+
+* `style` – e.g. `"formal"`, `"inspirational"`, `"professional"`, `"friendly"`.
+* `voice` – e.g. `"story-driven"`, `"achievement-focused"`, `"impact-focused"`.
+* `keywords` – 3–10 adjectives/phrases to sprinkle in the AI’s writing
+  (e.g. `"resilience"`, `"initiative"`, `"equity"`, `"curiosity"`).
+
+Derive by scanning:
+
+* Adjectives and phrases the scholarship uses (“transformative leaders”, “academic rigor”).
+* Whether language is more casual vs very institutional.
+
+#### 6.3.5 Constraints
+
+`constraints` is a compact summary of hard requirements the AI should always respect when drafting:
+
+* `must_study_in_country`:
+
+  * If eligibility clearly requires study in a specific country (e.g. Canada only),
+    set to `"CA"` (ISO-style code).
+  * Otherwise `null`.
+
+* `min_gpa`:
+
+  * If `min_gpa` is specified and reliable, set here (same scale as normalized `min_gpa`).
+  * Otherwise `null`.
+
+Optionally we may extend `constraints` later with things like
+`required_level_of_study` or `required_field_of_study`, but for hackathon
+we only guarantee the two above.
+
+---
+
+Implementation note: for hackathon, it’s acceptable to generate
+`personality_profile` with a one-off offline LLM call per scholarship, as long
+as the resulting weights/themes/tone **can be justified** by the source text.
+You can also manually override profiles for the 5–10 “gold” demo scholarships.
+
+
 
 ---
 

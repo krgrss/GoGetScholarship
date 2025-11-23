@@ -24,6 +24,7 @@ import { z } from 'zod'
 import { randomUUID } from 'crypto'
 import { pool } from '@/server/db'
 import { rateLimit } from '@/server/rateLimit'
+import { getStudentIdFromRequest } from '@/server/auth'
 
 const PlanIn = z.object({
   student_id: z.string().uuid(),
@@ -48,7 +49,12 @@ export const Route = createFileRoute('/api/plan')({
 
         let body: z.infer<typeof PlanIn>
         try {
-          body = PlanIn.parse(await request.json())
+          const raw = await request.json()
+          const withCookie = {
+            ...raw,
+            student_id: raw.student_id ?? getStudentIdFromRequest(request),
+          }
+          body = PlanIn.parse(withCookie)
         } catch (e: any) {
           return new Response(
             JSON.stringify({ ok: false, error: `Invalid payload: ${e}` }),
@@ -117,7 +123,8 @@ export const Route = createFileRoute('/api/plan')({
               `update applications
                set status = $3::text,
                    updated_at = now()
-               where id = $1::uuid`,
+               where id = $1::uuid
+                 and student_id = $2::uuid`,
               [applicationId, body.student_id, nextStatus],
             )
           }
@@ -127,12 +134,14 @@ export const Route = createFileRoute('/api/plan')({
             `select id from application_plans where application_id = $1::uuid`,
             [applicationId],
           )
-          if (existingPlans.rowCount > 0) {
+          if ((existingPlans.rowCount ?? 0) > 0) {
             const planIds = existingPlans.rows.map((r) => r.id as string)
-            await client.query(
-              `delete from application_tasks where plan_id = ANY($1::uuid[])`,
-              [planIds],
-            )
+            if (planIds.length) {
+              await client.query(
+                `delete from application_tasks where plan_id = ANY($1::uuid[])`,
+                [planIds],
+              )
+            }
             await client.query(
               `delete from application_plans where application_id = $1::uuid`,
               [applicationId],
@@ -244,7 +253,21 @@ export const Route = createFileRoute('/api/plan')({
             { headers: { 'Content-Type': 'application/json' } },
           )
         } catch (e: any) {
-          await pool.query('ROLLBACK')
+          // Roll back on the same client to avoid leaving a bad transaction in the pool
+          try {
+            await client.query('ROLLBACK')
+          } catch {}
+          const msg = String(e)
+          if (msg.includes('application_plans') || msg.includes('application_tasks')) {
+            return new Response(
+              JSON.stringify({
+                ok: false,
+                error:
+                  'Planner tables are missing. Run the schema for applications/application_plans/application_tasks and retry.',
+              }),
+              { status: 500, headers: { 'Content-Type': 'application/json' } },
+            )
+          }
           return new Response(
             JSON.stringify({ ok: false, error: String(e).slice(0, 4000) }),
             { status: 500, headers: { 'Content-Type': 'application/json' } },
@@ -259,4 +282,3 @@ export const Route = createFileRoute('/api/plan')({
     },
   },
 })
-

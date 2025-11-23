@@ -19,6 +19,18 @@ const EnvSchema = z.object({
   ADMIN_API_KEY: z.string().optional(),
 })
 
+import fs from 'node:fs'
+import path from 'node:path'
+try {
+  const logPath = path.join(process.cwd(), 'env-debug.log')
+  fs.appendFileSync(
+    logPath,
+    `[${new Date().toISOString()}] Env check:\nDATABASE_URL: ${process.env.DATABASE_URL ? 'Present' : 'Missing'}\nVOYAGE_API_KEY: ${process.env.VOYAGE_API_KEY ? 'Present' : 'Missing'}\n`,
+  )
+} catch (e) {
+  // ignore logging failures
+}
+
 export const ENV = EnvSchema.parse({
   ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
   VOYAGE_API_KEY: process.env.VOYAGE_API_KEY,

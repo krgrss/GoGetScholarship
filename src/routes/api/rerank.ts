@@ -76,15 +76,14 @@ export const Route = createFileRoute('/api/rerank')({
         }
 
         const system =
-          'You are a setwise reranker inspired by Rank-R1. ' +
-          'Rank ALL candidates globally using pairwise and listwise reasoning. ' +
-          'Output ONLY minified JSON that matches the schema.'
+          'You are a setwise scholarship reranker. ' +
+          'Rank ALL candidates globally and output ONLY minified JSON that matches the schema.'
 
         const user = `
 Student summary:
 ${input.student_summary}
 
-Candidates (JSON):
+Candidates (JSON, minified):
 ${JSON.stringify(input.candidates)}
 
 Return EXACTLY:
@@ -96,14 +95,14 @@ Return EXACTLY:
 Constraints:
 - Include every candidate id exactly once.
 - "score" is a global relevance score in [0,100], not probabilities.
-- Keep rationales short and reference concrete alignments (GPA, projects, fields, themes).
+- Keep rationales very short; reference concrete alignments (GPA, projects, fields, themes).
 `.trim()
 
         const started = Date.now()
         const res = await askClaude({
           system,
           user,
-          max_tokens: 1200,
+          max_tokens: 600,
         })
         const durationMs = Date.now() - started
 

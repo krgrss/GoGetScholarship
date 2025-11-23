@@ -182,25 +182,20 @@ Grounding rules:
 - Do not assume demographics if they are not present in the student metadata.
 - When useful, mention which themes or weight categories from personality.weights/personality.themes you are drawing on.
 
-## STUDENT PROFILE (from DB)
+## STUDENT PROFILE (from DB, minified)
+${JSON.stringify(student)}
 
-${JSON.stringify(student, null, 2)}
-
-## SCHOLARSHIP ELIGIBILITY & THEMES (from DB)
-${JSON.stringify(
-  {
-    id: scholarship.id,
-    name: scholarship.name,
-    min_gpa: scholarship.min_gpa,
-    country: scholarship.country,
-    fields: scholarship.fields,
-    metadata: scholarship.metadata,
-    personality: scholarship.personality,
-    raw_text: scholarship.raw_text.slice(0, 4000),
-  },
-  null,
-  2,
-)}
+## SCHOLARSHIP ELIGIBILITY & THEMES (from DB, minified)
+${JSON.stringify({
+  id: scholarship.id,
+  name: scholarship.name,
+  min_gpa: scholarship.min_gpa,
+  country: scholarship.country,
+  fields: scholarship.fields,
+  metadata: scholarship.metadata,
+  personality: scholarship.personality,
+  raw_text: scholarship.raw_text.slice(0, 2500),
+})}
 
 ## TASK
 Using ONLY the information above, fill in the JSON fields with concise bullets.
@@ -209,7 +204,7 @@ Using ONLY the information above, fill in the JSON fields with concise bullets.
           const res = await askClaude({
             system,
             user,
-            max_tokens: 1000,
+            max_tokens: 700,
           })
 
           const txt = extractAnthropicText(res)

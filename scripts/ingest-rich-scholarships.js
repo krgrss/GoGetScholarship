@@ -124,7 +124,28 @@ function mapRecordToIngest(r) {
     country,
     fields,
     metadata,
+    rubric: generateRubric(r),
   }
+}
+
+function generateRubric(r) {
+  if (!r.personality_profile || !r.personality_profile.weights) return undefined
+  
+  const weights = r.personality_profile.weights
+  const rubric = []
+  
+  for (const [key, weight] of Object.entries(weights)) {
+    if (weight > 0) {
+      rubric.push({
+        id: key,
+        name: key.charAt(0).toUpperCase() + key.slice(1).replace(/_/g, ' '),
+        description: `Evaluate based on ${key.replace(/_/g, ' ')}`,
+        weight: Math.round(weight * 100)
+      })
+    }
+  }
+  
+  return rubric.length > 0 ? rubric : undefined
 }
 
 async function main() {
@@ -147,22 +168,13 @@ async function main() {
 
   const filePath = path.resolve(process.cwd(), fileArg)
   const raw = await fs.readFile(filePath, 'utf8')
-  let parsed
+  let records
   try {
-    parsed = JSON.parse(raw)
+    records = parseJsonOrJsonl(raw, fileArg)
   } catch (e) {
-    console.error('ERROR: Failed to parse JSON file:', e)
+    console.error('ERROR:', e.message || e)
     process.exitCode = 1
     return
-  }
-
-  let records
-  if (Array.isArray(parsed)) {
-    records = parsed
-  } else if (parsed && Array.isArray(parsed.scholarships)) {
-    records = parsed.scholarships
-  } else {
-    records = [parsed]
   }
 
   if (records.length === 0) {
@@ -211,3 +223,39 @@ main().catch((err) => {
   console.error('Unexpected error during ingest:', err)
   process.exitCode = 1
 })
+
+function parseJsonOrJsonl(raw, fileArg) {
+  // Support both JSON and JSONL for convenience.
+  // - .json: existing behavior (single object / array / { scholarships: [...] }).
+  // - .jsonl: one JSON object per line.
+  const lower = fileArg.toLowerCase()
+  if (lower.endsWith('.jsonl')) {
+    const lines = raw.split(/\r?\n/).map((l) => l.trim())
+    const records = []
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      if (!line || line.startsWith('#')) continue
+      try {
+        records.push(JSON.parse(line))
+      } catch (e) {
+        throw new Error(`Failed to parse JSONL line ${i + 1}: ${e}`)
+      }
+    }
+    return records
+  }
+
+  let parsed
+  try {
+    parsed = JSON.parse(raw)
+  } catch (e) {
+    throw new Error(`Failed to parse JSON file: ${e}`)
+  }
+
+  if (Array.isArray(parsed)) {
+    return parsed
+  }
+  if (parsed && Array.isArray(parsed.scholarships)) {
+    return parsed.scholarships
+  }
+  return [parsed]
+}

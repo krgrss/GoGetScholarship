@@ -78,6 +78,9 @@ export const Route = createFileRoute('/api/personality')({
           'You are an expert reviewer of scholarship descriptions. ' +
           'Output only valid minified JSON matching the schema.'
 
+        const truncatedRaw = body.raw_text.slice(0, 4000)
+        const truncatedWinners = (body.winner_texts ?? []).slice(0, 5).map((t) => t.slice(0, 1500))
+
         const user = `
 Return EXACTLY this JSON (no prose), filling values realistically and making sure weights sum to 1.0:
 
@@ -101,16 +104,16 @@ Return EXACTLY this JSON (no prose), filling values realistically and making sur
 
 Consider the scholarship text and any winner stories:
 --- SCHOLARSHIP (${body.scholarship_name ?? 'unknown'}) ---
-${body.raw_text}
+${truncatedRaw}
 
 --- WINNER STORIES (optional) ---
-${(body.winner_texts ?? []).join('\n\n---\n')}
+${truncatedWinners.join('\n\n---\n')}
 `.trim()
 
         const res = await askClaude({
           system,
           user,
-          max_tokens: 1200,
+          max_tokens: 700,
         })
 
         try {
