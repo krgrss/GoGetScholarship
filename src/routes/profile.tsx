@@ -2,6 +2,15 @@ import { Link, createFileRoute } from '@tanstack/react-router'
 import * as React from 'react'
 
 export const Route = createFileRoute('/profile')({
+  beforeLoad: () => {
+    if (typeof window !== 'undefined') {
+      const studentId = localStorage.getItem('scholarship_student_id') || localStorage.getItem('student_id')
+      if (!studentId) {
+        window.location.href = '/login'
+        throw new Error('Redirecting to login')
+      }
+    }
+  },
   component: ProfilePage,
 })
 

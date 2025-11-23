@@ -23,12 +23,13 @@ import { z } from 'zod'
 import { pool } from '../../server/db'
 import { embedWithVoyage } from '../../server/embeddings/voyage'
 import { rateLimit } from '../../server/rateLimit'
+import { setStudentCookie } from '../../server/auth'
 
 const StudentProfileIn = z.object({
   id: z.string().uuid().optional(),
   name: z.string().optional(),
   email: z.string().email().optional(),
-  gpa: z.number().min(0).max(4).optional(),
+  gpa: z.number().min(0).max(9.99).optional(),
   major: z.string().optional(),
   country: z.string().optional(),
   gender: z.string().optional(),
@@ -111,8 +112,13 @@ export const Route = createFileRoute('/api/profile')({
           client.release()
         }
 
+        const cookieHeader = setStudentCookie(studentId)
+
         return new Response(JSON.stringify({ ok: true, student_id: studentId }), {
-          headers: { 'Content-Type': 'application/json' },
+          headers: {
+            'Content-Type': 'application/json',
+            'Set-Cookie': cookieHeader,
+          },
         })
       },
     },

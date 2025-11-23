@@ -13,12 +13,9 @@
  * @returns `{ ok: true }` or `{ ok: false, res: Response }` for 401.
  */
 export function checkAdminKey(request: Request, expected?: string) {
-  // Demo bypass: allow turning off admin guard via env or header
-  const demoBypass =
-    !expected ||
-    process.env.ADMIN_API_KEY_BYPASS === 'true' ||
-    request.headers.get('x-demo-allow') === 'true'
-  if (demoBypass) return { ok: true as const }
+  // Allow explicit bypass ONLY when ADMIN_API_KEY is not set, or when server-side flag is true.
+  const bypass = !expected || process.env.ADMIN_API_KEY_BYPASS === 'true'
+  if (bypass) return { ok: true as const }
   if (!expected) return { ok: true as const }
   // Accept multiple header names to stay compatible with existing clients
   const provided =

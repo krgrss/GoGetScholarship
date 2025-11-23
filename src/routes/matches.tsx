@@ -4,7 +4,10 @@ import {
   CalendarDays,
   CheckCircle2,
   Filter,
+  Heart,
   SlidersHorizontal,
+  Sparkles,
+  X,
 } from 'lucide-react'
 import * as React from 'react'
 
@@ -38,6 +41,15 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 
 export const Route = createFileRoute('/matches')({
+  beforeLoad: () => {
+    if (typeof window !== 'undefined') {
+      const studentId = localStorage.getItem('scholarship_student_id') || localStorage.getItem('student_id')
+      if (!studentId) {
+        window.location.href = '/login'
+        throw new Error('Redirecting to login')
+      }
+    }
+  },
   component: MatchesPage,
 })
 
@@ -68,6 +80,7 @@ type ApiMatchRow = {
   dot_sim?: number
   fields?: string[] | null
   metadata?: Record<string, any> | null
+  sponsor?: string | null
 }
 
 const FALLBACK_MATCHES: MatchCard[] = [
@@ -113,6 +126,38 @@ function MatchesPage() {
   const [selectedLevels, setSelectedLevels] = React.useState<string[]>([])
   const [fieldQuery, setFieldQuery] = React.useState('')
   const [hideIneligible, setHideIneligible] = React.useState(true)
+  const [viewMode, setViewMode] = React.useState<'list' | 'swipe'>('list')
+  const [savedMatches, setSavedMatches] = React.useState<Set<string>>(new Set())
+  const [hiddenMatches, setHiddenMatches] = React.useState<Set<string>>(new Set())
+
+  const toggleSave = (id: string) => {
+    setSavedMatches((prev) => {
+      const next = new Set(prev)
+      if (next.has(id)) next.delete(id)
+      else next.add(id)
+      return next
+    })
+  }
+
+  const hideMatch = (id: string) => {
+    setHiddenMatches((prev) => {
+      const next = new Set(prev)
+      next.add(id)
+      return next
+    })
+  }
+
+  const onToggleCountry = (country: string) => {
+    setSelectedCountries((prev) =>
+      prev.includes(country) ? prev.filter((c) => c !== country) : [...prev, country],
+    )
+  }
+
+  const onToggleLevel = (level: string) => {
+    setSelectedLevels((prev) =>
+      prev.includes(level) ? prev.filter((l) => l !== level) : [...prev, level],
+    )
+  }
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return
@@ -175,9 +220,9 @@ function MatchesPage() {
           return {
             id: String(row.id),
             name: row.name,
-            provider: 'Scholarship provider',
-            amount: 'See details',
-            deadline: 'See details',
+            provider: row.metadata?.provider_name || row.sponsor || 'Scholarship Provider',
+            amount: row.metadata?.amount_max ? `$${row.metadata.amount_max}` : (row.metadata?.amount_min ? `$${row.metadata.amount_min}` : 'Varies'),
+            deadline: row.metadata?.deadline ? new Date(row.metadata.deadline).toLocaleDateString() : 'Open',
             daysLeft: '',
             levelTags: formatTags(extractArray(row.metadata?.level_of_study)),
             fieldTags: formatTags(extractFields(row)),
@@ -230,7 +275,7 @@ function MatchesPage() {
             if (rerankRes.ok && rerankData?.ok && Array.isArray(rerankData.ranking)) {
               const byId = new Map(next.map((m) => [m.id, m]))
               next = rerankData.ranking
-                .map((r: any, idx: number) => {
+                .map((r: any) => {
                   const base = byId.get(String(r.id))
                     if (!base) return null
                     return {
@@ -261,6 +306,7 @@ function MatchesPage() {
   const visibleMatches = React.useMemo(() => {
     const base = [...matches]
     const filtered = base.filter((match) => {
+      if (hiddenMatches.has(match.id)) return false
       if (hideIneligible && match.status === 'ineligible') return false
       if (selectedCountries.length) {
         const tags = match.countryTags.map((t) => normalizeCountry(t))
@@ -299,6 +345,11 @@ function MatchesPage() {
                 : 'Based on your profile and embeddings. We ranked scholarships by semantic fit.'}
             </p>
           </div>
+          {error && (
+            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
+              {error}
+            </div>
+          )}
           <Sheet>
             <SheetTrigger asChild>
               <Button variant="outline" className="lg:hidden">
@@ -311,7 +362,16 @@ function MatchesPage() {
                 <SheetTitle>Filters</SheetTitle>
               </SheetHeader>
               <div className="mt-4">
-                <FiltersContent />
+                <FiltersContent
+                  selectedCountries={selectedCountries}
+                  selectedLevels={selectedLevels}
+                  fieldQuery={fieldQuery}
+                  hideIneligible={hideIneligible}
+                  onToggleCountry={onToggleCountry}
+                  onToggleLevel={onToggleLevel}
+                  onFieldQuery={setFieldQuery}
+                  onToggleHideIneligible={setHideIneligible}
+                />
               </div>
             </SheetContent>
           </Sheet>
@@ -377,7 +437,16 @@ function MatchesPage() {
                   See my matches
                 </Button>
                 <Button
-                  variant={browseAll ? 'default' : 'outline'}
+                  variant={viewMode === 'swipe' ? 'default' : 'outline'}
+                  size="sm"
+                  className="inline-flex items-center gap-2"
+                  onClick={() => setViewMode('swipe')}
+                >
+                  <Sparkles className="h-4 w-4" />
+                  Find My Match
+                </Button>
+                <Button
+                  variant={browseAll && viewMode === 'list' ? 'default' : 'outline'}
                   size="sm"
                   className="inline-flex items-center gap-2"
                   onClick={() => setBrowseAll(true)}
@@ -408,13 +477,68 @@ function MatchesPage() {
               </div>
             </div>
 
-            {error && (
-              <p className="text-xs text-destructive">
-                {error}
-              </p>
-            )}
-
-            <section className="grid gap-4 md:grid-cols-2">
+            {viewMode === 'swipe' && visibleMatches.length > 0 ? (
+              <div className="mx-auto max-w-md py-8">
+                <div className="relative aspect-[3/4] w-full">
+                  {visibleMatches.slice(0, 1).map((match) => (
+                    <Card key={match.id} className="absolute inset-0 flex flex-col overflow-hidden shadow-xl">
+                      <div className="flex-1 bg-gradient-to-br from-primary/10 to-primary/5 p-6">
+                        <div className="flex h-full flex-col justify-center text-center">
+                          <h2 className="mb-2 text-3xl font-bold tracking-tight">{match.amount}</h2>
+                          <p className="text-lg font-medium text-muted-foreground">{match.daysLeft || 'Deadline approaching'}</p>
+                        </div>
+                      </div>
+                      <div className="p-6">
+                        <div className="mb-4 flex flex-wrap gap-2">
+                          {match.status !== 'ineligible' && (
+                            <Badge variant="secondary" className="bg-green-100 text-green-700">Eligible</Badge>
+                          )}
+                          <Badge variant="outline">{match.workloadLabel} Workload</Badge>
+                          {match.countryTags[0] && <Badge variant="outline">{match.countryTags[0]}</Badge>}
+                        </div>
+                        <h3 className="mb-1 text-xl font-bold">{match.name}</h3>
+                        <p className="mb-4 text-sm text-muted-foreground">{match.provider}</p>
+                        
+                        <div className="space-y-2 text-sm">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium">Requires:</span>
+                            <span>{match.workload}</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="mt-auto grid grid-cols-2 gap-4 border-t p-4">
+                        <Button 
+                          variant="outline" 
+                          size="lg" 
+                          className="h-14 rounded-full border-2 hover:bg-muted"
+                          onClick={() => hideMatch(match.id)}
+                        >
+                          <X className="mr-2 h-5 w-5" />
+                          Hide
+                        </Button>
+                        <Button 
+                          size="lg" 
+                          className="h-14 rounded-full bg-green-600 hover:bg-green-700"
+                          onClick={() => {
+                            toggleSave(match.id)
+                            hideMatch(match.id) // Move to next
+                          }}
+                        >
+                          <Heart className="mr-2 h-5 w-5 fill-current" />
+                          Save
+                        </Button>
+                      </div>
+                    </Card>
+                  ))}
+                  <div className="absolute -z-10 top-2 left-2 right-2 bottom-0 rounded-xl bg-muted shadow-lg" />
+                  <div className="absolute -z-20 top-4 left-4 right-4 bottom-0 rounded-xl bg-muted/50 shadow" />
+                </div>
+                <div className="mt-8 text-center">
+                  <p className="text-sm text-muted-foreground">{visibleMatches.length} scholarships left to review</p>
+                </div>
+              </div>
+            ) : (
+              <section className="grid gap-4 md:grid-cols-2">
               {loading && visibleMatches.length === 0 && (
                 <>
                   {Array.from({ length: 4 }).map((_, idx) => (
@@ -455,6 +579,12 @@ function MatchesPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="pb-3">
+                    <div className="mb-4">
+                      <div className="flex items-baseline justify-between">
+                        <span className="text-lg font-bold text-primary">{match.amount}</span>
+                        <span className="text-xs text-muted-foreground">Deadline: {match.deadline}</span>
+                      </div>
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       {match.demographicTags.map((tag) => (
                         <Badge
@@ -512,9 +642,20 @@ function MatchesPage() {
                       </Link>
                     </Button>
                   </CardFooter>
+                  <div className="absolute top-4 right-4">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-full bg-background/80 shadow-sm hover:bg-background"
+                      onClick={() => toggleSave(match.id)}
+                    >
+                      <Heart className={`h-4 w-4 ${savedMatches.has(match.id) ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`} />
+                    </Button>
+                  </div>
                 </Card>
               ))}
             </section>
+            )}
           </section>
         </div>
       </main>
@@ -836,7 +977,7 @@ function FiltersContent({
           <Checkbox
             id="ineligible"
             checked={hideIneligible}
-            onCheckedChange={(val) => onToggleHideIneligible(Boolean(val))}
+                  onCheckedChange={() => onToggleHideIneligible(Boolean(!hideIneligible))}
           />
           <label
             htmlFor="ineligible"

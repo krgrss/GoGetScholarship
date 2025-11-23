@@ -185,6 +185,19 @@ function DebugPage() {
                     <div className="mt-1 whitespace-pre-wrap text-[11px] text-muted-foreground">
                       {s.summary || '(no summary)'}
                     </div>
+                    <Button
+                      size="sm"
+                      className="mt-2"
+                      onClick={() => {
+                        if (typeof window !== 'undefined') {
+                          localStorage.setItem('student_id', s.id)
+                          localStorage.setItem('scholarship_student_id', s.id)
+                          window.location.reload()
+                        }
+                      }}
+                    >
+                      Use this student
+                    </Button>
                   </div>
                 ))}
               </div>

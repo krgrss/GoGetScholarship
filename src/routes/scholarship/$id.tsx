@@ -11,6 +11,8 @@ import {
   Lightbulb,
   Mic,
   Sparkles,
+  ListTodo,
+  Target,
   Users,
 } from 'lucide-react'
 import * as React from 'react'
@@ -40,11 +42,20 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 
 export const Route = createFileRoute('/scholarship/$id')({
+  beforeLoad: () => {
+    if (typeof window !== 'undefined') {
+      const studentId = localStorage.getItem('scholarship_student_id') || localStorage.getItem('student_id')
+      if (!studentId) {
+        window.location.href = '/login'
+        throw new Error('Redirecting to login')
+      }
+    }
+  },
   component: ScholarshipDetailPage,
   validateSearch: (search) => {
     const raw = Number((search as any)?.score)
@@ -262,7 +273,6 @@ export function ScholarshipDetailPage() {
   }>({})
   const [sourcesOpen, setSourcesOpen] = React.useState(false)
   const [eligibilityInfoOpen, setEligibilityInfoOpen] = React.useState(false)
-  const [showJudgeDebug, setShowJudgeDebug] = React.useState(false)
   const [profileJsonOpen, setProfileJsonOpen] = React.useState(false)
   const [profileJson, setProfileJson] = React.useState<any | null>(null)
 
@@ -1012,6 +1022,34 @@ export function ScholarshipDetailPage() {
     }
   }
 
+  const handlePlan = async () => {
+    if (!scholarship) return
+    setPlanLoading(true)
+    setPlanError(null)
+    try {
+      const studentId =
+        localStorage.getItem('scholarship_student_id') || localStorage.getItem('student_id')
+      if (!studentId) throw new Error('No student ID found')
+
+      const res = await fetch('/api/plan', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          student_id: studentId,
+          scholarship_id: scholarship.id,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.ok) throw new Error(json.error || 'Failed to create plan')
+
+      setPlanTasks(json.tasks || [])
+    } catch (e: any) {
+      setPlanError(e.message || 'Failed to generate plan')
+    } finally {
+      setPlanLoading(false)
+    }
+  }
+
   const tasksToShow = planTasks.length ? planTasks : localTasks
   const tasksAreLocal = planTasks.length === 0
   const timelineSteps = [
@@ -1132,14 +1170,7 @@ export function ScholarshipDetailPage() {
                 <p className="text-lg text-muted-foreground">
                   {scholarship?.provider}
                 </p>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs"
-                  onClick={() => setShowJudgeDebug((v) => !v)}
-                >
-                  {showJudgeDebug ? 'Hide advanced debug' : 'Show advanced debug'}
-                </Button>
+
               </div>
 
               <TooltipProvider>
@@ -1177,28 +1208,7 @@ export function ScholarshipDetailPage() {
                   {aiStatus}
                 </div>
               )}
-              {showJudgeDebug && (
-                <div className="mt-2 rounded-md border border-dashed border-border bg-muted/30 p-3 text-[11px] text-muted-foreground">
-                  <div className="flex flex-wrap gap-4">
-                    <span>ID: {scholarship?.id}</span>
-                    <span>Personality: {data?.personality ? 'loaded' : 'not loaded'}</span>
-                    <span>Rubric items: {rubric?.length ?? 0}</span>
-                    <span>Tasks seeded: {scholarship?.taskSeeds.length ?? 0}</span>
-                    {profileJson && (
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-[11px]"
-                        onClick={() => setProfileJsonOpen(true)}
-                      >
-                        View raw profile JSON
-                      </Button>
-                    )}
-                  </div>
-                </div>
-              )}
-
-                <div className="mt-4 flex flex-wrap items-center gap-3">
+              <div className="mt-4 flex flex-wrap items-center gap-3">
                   <Badge variant="secondary" className="text-sm">
                     {scholarship?.amountLabel ?? 'Amount TBA'}
                   </Badge>
@@ -1322,76 +1332,65 @@ export function ScholarshipDetailPage() {
               </Dialog>
             </section>
 
-            {scholarship?.winnerPatterns && (
-              <section className="space-y-3" id="winners">
+            <Card id="strategy">
+              <CardHeader className="pb-3">
                 <div className="flex items-center justify-between">
-                  <h3 className="text-lg font-semibold">Past winners & patterns</h3>
-                  <Badge variant="outline" className="text-[11px] font-medium">
-                    AI-mined
-                  </Badge>
+                  <div className="space-y-1">
+                    <CardTitle className="flex items-center gap-2 text-sm">
+                      <Target className="h-4 w-4 text-primary" />
+                      Strategy
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Tailored advice to maximize your chances.
+                    </CardDescription>
+                  </div>
                 </div>
-                <Card>
-                  <CardContent className="pt-5">
-                    <Tabs defaultValue="examples" className="space-y-3">
-                      <TabsList className="grid w-full grid-cols-2">
-                        <TabsTrigger value="examples">Examples</TabsTrigger>
-                        <TabsTrigger value="patterns">Patterns</TabsTrigger>
-                      </TabsList>
-                      <TabsContent value="examples" className="space-y-3">
-                        <p className="text-sm leading-relaxed text-muted-foreground">
-                          {scholarship.winnerPatterns.winner_profile}
-                        </p>
-                        <div className="flex flex-wrap gap-1.5">
-                          {scholarship.winnerPatterns.key_themes.map((t) => (
-                            <Badge
-                              key={t}
-                              variant="secondary"
-                              className="rounded-full px-2 py-0.5 text-[11px]"
-                            >
-                              {t}
-                            </Badge>
-                          ))}
-                        </div>
-                      </TabsContent>
-                      <TabsContent value="patterns" className="space-y-3">
-                        <div className="space-y-2">
-                          {scholarship.winnerPatterns.success_patterns.map((p, idx) => {
-                            const strength = Math.max(40, 90 - idx * 10)
-                            return (
-                              <div
-                                key={p}
-                                className="space-y-1 rounded-md border border-border bg-muted/30 p-2"
-                              >
-                                <div className="flex items-center justify-between text-xs">
-                                  <span className="font-medium text-foreground">{p}</span>
-                                  <span className="text-[11px] text-muted-foreground">
-                                    ~{Math.round(strength)}% of winners
-                                  </span>
-                                </div>
-                                <div className="h-1.5 w-full rounded-full bg-muted">
-                                  <div
-                                    className="h-full rounded-full bg-primary"
-                                    style={{ width: `${strength}%` }}
-                                  />
-                                </div>
-                              </div>
-                            )
-                          })}
-                          {scholarship.winnerPatterns.success_patterns.length === 0 && (
-                            <p className="text-xs text-muted-foreground">
-                              No patterns available yet.
-                            </p>
-                          )}
-                        </div>
-                        <p className="text-[11px] text-muted-foreground">
-                          Patterns extracted by AI from public winner stories.
-                        </p>
-                      </TabsContent>
-                    </Tabs>
-                  </CardContent>
-                </Card>
-              </section>
-            )}
+              </CardHeader>
+              <CardContent className="grid gap-6 md:grid-cols-2">
+                <div className="space-y-3">
+                  <div>
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Keywords to Use
+                    </p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {(scholarship?.personalityThemes ?? []).map((theme) => (
+                        <Badge
+                          key={theme}
+                          variant="secondary"
+                          className="rounded-md px-2 py-1 text-[11px]"
+                        >
+                          {theme}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                  <div>
+                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Suggested Tone
+                    </p>
+                    <p className="text-sm italic text-muted-foreground">
+                      "{scholarship?.personalityTone || 'Professional & Authentic'}"
+                    </p>
+                  </div>
+                </div>
+                <div>
+                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Tips for Success
+                  </p>
+                  <ul className="space-y-2 text-xs text-muted-foreground">
+                    {(scholarship?.winnerPatterns?.success_patterns ?? []).slice(0, 3).map((tip, i) => (
+                      <li key={i} className="flex gap-2">
+                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
+                        <span>{tip}</span>
+                      </li>
+                    ))}
+                    {(!scholarship?.winnerPatterns?.success_patterns?.length) && (
+                      <li>Focus on demonstrating your unique value proposition and alignment with the provider's mission.</li>
+                    )}
+                  </ul>
+                </div>
+              </CardContent>
+            </Card>
 
             {/* Explain Fit Dialog */}
             <Dialog open={explainFitOpen} onOpenChange={setExplainFitOpen}>
@@ -1570,7 +1569,6 @@ export function ScholarshipDetailPage() {
                   )}
                 </CardContent>
               </Card>
-
               <Card id="compare">
                 <CardHeader className="pb-3">
                   <CardTitle className="text-sm">Compare essays</CardTitle>
@@ -1660,6 +1658,109 @@ export function ScholarshipDetailPage() {
                 </CardContent>
               </Card>
             </section>
+
+            <Card>
+              <CardHeader className="pb-3">
+                <CardTitle className="text-sm">Targeted revision (RubricCoach)</CardTitle>
+                <CardDescription className="text-xs">
+                  Pick a weak criterion and request a focused revision. Accept or discard locally.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                {!rubric && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Rubric not loaded yet. Try again in a moment.
+                  </p>
+                )}
+                {rubric && rubric.length === 0 && (
+                  <p className="text-[11px] text-muted-foreground">
+                    No rubric found for this scholarship.
+                  </p>
+                )}
+                {rubric && rubric.length > 0 && (
+                  <>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-medium text-muted-foreground">
+                        Criterion
+                      </label>
+                      <select
+                        value={reviseCriterionId}
+                        onChange={(e) => setReviseCriterionId(e.target.value)}
+                        className="w-full rounded-md border border-border bg-background px-2 py-1 text-xs"
+                      >
+                        {rubric.map((item) => (
+                          <option key={item.id} value={item.id}>
+                            {item.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="space-y-1">
+                      <label className="text-[11px] font-medium text-muted-foreground">
+                        Your current essay snippet
+                      </label>
+                      <Textarea
+                        value={reviseText}
+                        onChange={(e) => setReviseText(e.target.value)}
+                        rows={6}
+                        className="text-xs"
+                        placeholder="Paste the section to revise..."
+                      />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                      <Button size="sm" onClick={handleRevise} disabled={reviseLoading}>
+                        {reviseLoading ? 'Revising…' : 'Revise for this criterion'}
+                      </Button>
+                      {reviseError && (
+                        <span className="text-destructive">{reviseError}</span>
+                      )}
+                    </div>
+                    {revisedText && (
+                      <div className="space-y-2 rounded-md bg-muted/30 p-3">
+                        <p className="text-[11px] font-semibold text-muted-foreground">
+                          Revision candidate
+                        </p>
+                        <div className="grid gap-2 text-xs md:grid-cols-2">
+                          <div className="space-y-1">
+                            <p className="text-[11px] font-medium text-muted-foreground">Original</p>
+                            <div className="rounded-md border border-border bg-background p-2 whitespace-pre-wrap">
+                              {reviseText || '(empty)'}
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <p className="text-[11px] font-medium text-muted-foreground">Revised</p>
+                            <div className="rounded-md border border-border bg-background p-2 whitespace-pre-wrap">
+                              {revisedText}
+                            </div>
+                          </div>
+                        </div>
+                        {reviseRationale && (
+                          <p className="text-[11px] text-muted-foreground">
+                            Rationale: {reviseRationale}
+                          </p>
+                        )}
+                        <div className="flex gap-2">
+                          <Button size="sm" variant="default" onClick={acceptRevision}>
+                            Accept revision
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => {
+                              setRevisedText(null)
+                              setReviseRationale(null)
+                            }}
+                          >
+                            Discard
+                          </Button>
+                        </div>
+                      </div>
+                    )}
+                  </>
+                )}
+              </CardContent>
+            </Card>
+
 
             <Dialog open={profileJsonOpen} onOpenChange={setProfileJsonOpen}>
               <DialogContent className="max-w-2xl">
@@ -1799,6 +1900,7 @@ export function ScholarshipDetailPage() {
                     </div>
                   </div>
                 )}
+
                 {data?.personality?.tone && (
                   <div className="space-y-1 text-xs text-muted-foreground">
                     <p className="font-semibold text-foreground">Tone guide</p>
@@ -1817,6 +1919,109 @@ export function ScholarshipDetailPage() {
                   <span>Based on curated data, not scraped web content.</span>
                 </div>
               </CardFooter>
+            </Card>
+
+            <Card className="border-primary/20 shadow-md">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <FileText className="h-4 w-4 text-primary" />
+                  Application components
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  What you'll likely need to submit.
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="mb-4 flex items-center gap-2">
+                  <span
+                    className={`inline-block h-2 w-2 rounded-full ${
+                      scholarship?.workloadLabel === 'Light'
+                        ? 'bg-green-500'
+                        : scholarship?.workloadLabel === 'Medium'
+                          ? 'bg-yellow-500'
+                          : 'bg-red-500'
+                    }`}
+                  />
+                  <span className="text-xs font-medium">
+                    {scholarship?.workloadLabel} Workload
+                  </span>
+                  <span className="text-xs text-muted-foreground">
+                    {scholarship?.workloadItems?.join(' • ')}
+                  </span>
+                </div>
+                <ul className="space-y-2 text-xs text-muted-foreground">
+                  <li className="flex items-center gap-2">
+                    <FileText className="h-3.5 w-3.5 text-primary" />
+                    <span>Personal statement essay</span>
+                  </li>
+                  <li className="flex items-center gap-2">
+                    <GraduationCap className="h-3.5 w-3.5 text-primary" />
+                    <span>Official transcript</span>
+                  </li>
+                  {scholarship?.workloadItems?.includes('Resume') && (
+                    <li className="flex items-center gap-2">
+                      <Users className="h-3.5 w-3.5 text-primary" />
+                      <span>Resume / CV</span>
+                    </li>
+                  )}
+                </ul>
+              </CardContent>
+            </Card>
+
+            <Card className="border-primary/20 bg-primary/5 shadow-md">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <ListTodo className="h-4 w-4 text-primary" />
+                  Plan your application
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Generate a tailored plan and track progress.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-xs text-muted-foreground">
+                  We'll use this scholarship's components and deadline to suggest a lightweight task list.
+                </p>
+                
+                {planTasks.length > 0 ? (
+                  <div className="space-y-2">
+                    {planTasks.map((task) => (
+                      <div key={task.id} className="flex items-center gap-2 text-xs">
+                        <div className={`h-4 w-4 rounded-full border ${task.completed ? 'bg-primary border-primary' : 'border-muted-foreground'}`} />
+                        <span className={task.completed ? 'line-through text-muted-foreground' : ''}>{task.label}</span>
+                      </div>
+                    ))}
+                    <Button variant="outline" size="sm" className="w-full mt-2" asChild>
+                      <Link to="/dashboard">Go to dashboard</Link>
+                    </Button>
+                  </div>
+                ) : (
+                  <Button 
+                    className="w-full" 
+                    size="sm" 
+                    onClick={handlePlan} 
+                    disabled={planLoading || !profileAvailable}
+                  >
+                    {planLoading ? (
+                      <>
+                        <Sparkles className="mr-2 h-3 w-3 animate-pulse" />
+                        Generating plan...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-2 h-3 w-3" />
+                        Plan this scholarship
+                      </>
+                    )}
+                  </Button>
+                )}
+                
+                {!profileAvailable && (
+                  <p className="text-[10px] text-muted-foreground text-center">
+                    Save a profile to enable planning.
+                  </p>
+                )}
+              </CardContent>
             </Card>
 
             <Card>
@@ -1993,107 +2198,7 @@ export function ScholarshipDetailPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Targeted revision (RubricCoach)</CardTitle>
-                <CardDescription className="text-xs">
-                  Pick a weak criterion and request a focused revision. Accept or discard locally.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {!rubric && (
-                  <p className="text-[11px] text-muted-foreground">
-                    Rubric not loaded yet. Try again in a moment.
-                  </p>
-                )}
-                {rubric && rubric.length === 0 && (
-                  <p className="text-[11px] text-muted-foreground">
-                    No rubric found for this scholarship.
-                  </p>
-                )}
-                {rubric && rubric.length > 0 && (
-                  <>
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-medium text-muted-foreground">
-                        Criterion
-                      </label>
-                      <select
-                        value={reviseCriterionId}
-                        onChange={(e) => setReviseCriterionId(e.target.value)}
-                        className="w-full rounded-md border border-border bg-background px-2 py-1 text-xs"
-                      >
-                        {rubric.map((item) => (
-                          <option key={item.id} value={item.id}>
-                            {item.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-medium text-muted-foreground">
-                        Your current essay snippet
-                      </label>
-                      <Textarea
-                        value={reviseText}
-                        onChange={(e) => setReviseText(e.target.value)}
-                        rows={6}
-                        className="text-xs"
-                        placeholder="Paste the section to revise..."
-                      />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                      <Button size="sm" onClick={handleRevise} disabled={reviseLoading}>
-                        {reviseLoading ? 'Revising…' : 'Revise for this criterion'}
-                      </Button>
-                      {reviseError && (
-                        <span className="text-destructive">{reviseError}</span>
-                      )}
-                    </div>
-                    {revisedText && (
-                      <div className="space-y-2 rounded-md bg-muted/30 p-3">
-                        <p className="text-[11px] font-semibold text-muted-foreground">
-                          Revision candidate
-                        </p>
-                        <div className="grid gap-2 text-xs md:grid-cols-2">
-                          <div className="space-y-1">
-                            <p className="text-[11px] font-medium text-muted-foreground">Original</p>
-                            <div className="rounded-md border border-border bg-background p-2 whitespace-pre-wrap">
-                              {reviseText || '(empty)'}
-                            </div>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-[11px] font-medium text-muted-foreground">Revised</p>
-                            <div className="rounded-md border border-border bg-background p-2 whitespace-pre-wrap">
-                              {revisedText}
-                            </div>
-                          </div>
-                        </div>
-                        {reviseRationale && (
-                          <p className="text-[11px] text-muted-foreground">
-                            Rationale: {reviseRationale}
-                          </p>
-                        )}
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="default" onClick={acceptRevision}>
-                            Accept revision
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              setRevisedText(null)
-                              setReviseRationale(null)
-                            }}
-                          >
-                            Discard
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
+
          </div>
        </div>
      </div>

@@ -44,12 +44,14 @@ export const Route = createFileRoute('/api/dashboard')({
     handlers: {
       GET: async ({ request }) => {
         const url = new URL(request.url)
-        const rawStudentId = url.searchParams.get('student_id') || getStudentIdFromRequest(request)
-        const studentId =
-          rawStudentId && /^[0-9a-fA-F-]{36}$/.test(rawStudentId) ? rawStudentId : null
+        const raw =
+          (url.searchParams.get('student_id') || getStudentIdFromRequest(request) || '').trim()
+        const uuidRegex =
+          /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+        const studentId = uuidRegex.test(raw) ? raw : null
 
         if (!studentId) {
-          return new Response(JSON.stringify({ ok: false, error: 'Missing student_id' }), {
+          return new Response(JSON.stringify({ ok: false, error: 'Missing or invalid student_id' }), {
             status: 400,
             headers: { 'Content-Type': 'application/json' },
           })
@@ -81,7 +83,7 @@ export const Route = createFileRoute('/api/dashboard')({
               join application_tasks t on t.plan_id = ap.id
               where ap.application_id = a.id
             ) as task_counts on true
-            where a.student_id = $1::uuid
+            where a.student_id::text = $1::text
             order by a.created_at desc
           `
 

@@ -49,6 +49,8 @@ type DashboardApplication = {
   workloadItems?: string[]
 }
 
+const STUDENT_UUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+
 function DashboardPage() {
   const [kpi, setKpi] = React.useState<DashboardKpi | null>(null)
   const [applications, setApplications] = React.useState<DashboardApplication[]>([])
@@ -62,18 +64,18 @@ function DashboardPage() {
       setLoading(true)
       setError(null)
       try {
-        const studentId =
-          localStorage.getItem('scholarship_student_id') ||
-          localStorage.getItem('student_id')
+      const rawId =
+        localStorage.getItem('scholarship_student_id') ||
+        localStorage.getItem('student_id') ||
+        ''
+      const studentId = rawId.trim()
 
-        if (!studentId) {
-          setError(
-            'No saved profile found. Complete onboarding to save your profile and drafts first.',
-          )
-          return
-        }
+      if (!studentId || !STUDENT_UUID.test(studentId)) {
+        setError('Load a saved student ID first (via Admin > Debug) before viewing the dashboard.')
+        return
+      }
 
-        const res = await fetch(`/api/dashboard?student_id=${encodeURIComponent(studentId)}`)
+      const res = await fetch(`/api/dashboard?student_id=${encodeURIComponent(studentId)}`)
         const json = await res.json()
         if (!res.ok || !json.ok) {
           throw new Error(json?.error || `Dashboard request failed (${res.status})`)
