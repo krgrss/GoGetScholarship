@@ -123,7 +123,8 @@ export const Route = createFileRoute('/api/plan')({
               `update applications
                set status = $3::text,
                    updated_at = now()
-               where id = $1::uuid`,
+               where id = $1::uuid
+                 and student_id = $2::uuid`,
               [applicationId, body.student_id, nextStatus],
             )
           }
@@ -256,6 +257,17 @@ export const Route = createFileRoute('/api/plan')({
           try {
             await client.query('ROLLBACK')
           } catch {}
+          const msg = String(e)
+          if (msg.includes('application_plans') || msg.includes('application_tasks')) {
+            return new Response(
+              JSON.stringify({
+                ok: false,
+                error:
+                  'Planner tables are missing. Run the schema for applications/application_plans/application_tasks and retry.',
+              }),
+              { status: 500, headers: { 'Content-Type': 'application/json' } },
+            )
+          }
           return new Response(
             JSON.stringify({ ok: false, error: String(e).slice(0, 4000) }),
             { status: 500, headers: { 'Content-Type': 'application/json' } },

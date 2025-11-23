@@ -1,15 +1,15 @@
-import { createFileRoute, Link } from '@tanstack/react-router'
+import { createFileRoute } from '@tanstack/react-router'
+import * as React from 'react'
 import {
   ArrowRight,
+  BadgeCheck,
   CalendarDays,
-  CheckCircle2,
-  Filter,
   Heart,
-  SlidersHorizontal,
+  Layers,
+  List,
   Sparkles,
   X,
 } from 'lucide-react'
-import * as React from 'react'
 
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -30,26 +30,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Separator } from '@/components/ui/separator'
-import {
-  Sheet,
-  SheetContent,
-  SheetHeader,
-  SheetTitle,
-  SheetTrigger,
-} from '@/components/ui/sheet'
 import { Skeleton } from '@/components/ui/skeleton'
 
 export const Route = createFileRoute('/matches')({
-  beforeLoad: () => {
-    if (typeof window !== 'undefined') {
-      const studentId = localStorage.getItem('scholarship_student_id') || localStorage.getItem('student_id')
-      if (!studentId) {
-        window.location.href = '/login'
-        throw new Error('Redirecting to login')
-      }
-    }
-  },
   component: MatchesPage,
 })
 
@@ -68,6 +51,8 @@ type MatchCard = {
   workloadLabel: 'Light' | 'Medium' | 'Heavy'
   matchScore: number
   status?: 'in-progress' | 'ready' | 'ineligible'
+  whyMatch?: string
+  winnerInsights?: boolean
 }
 
 type ApiMatchRow = {
@@ -98,10 +83,12 @@ const FALLBACK_MATCHES: MatchCard[] = [
     workload: 'Essays + Refs',
     workloadLabel: 'Heavy',
     matchScore: 70,
+    whyMatch: 'Leadership and community impact',
+    winnerInsights: true,
   },
   {
     id: 'fallback-2',
-    name: 'RBC Future Launch – Indigenous Youth (demo)',
+    name: 'RBC Future Launch - Indigenous Youth (demo)',
     provider: 'Royal Bank of Canada',
     amount: '$10,000 / year',
     deadline: 'February 5, 2025',
@@ -113,28 +100,106 @@ const FALLBACK_MATCHES: MatchCard[] = [
     workload: 'Essays + Refs',
     workloadLabel: 'Medium',
     matchScore: 68,
+    whyMatch: 'Community leadership and need-based support',
+    winnerInsights: true,
   },
 ]
 
+type Mode = 'swipe' | 'list' | 'browse'
+
 function MatchesPage() {
   const [matches, setMatches] = React.useState<MatchCard[]>([])
+  const [profile, setProfile] = React.useState<any>(null)
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
-  const [browseAll, setBrowseAll] = React.useState(true)
+  const [browseAll, setBrowseAll] = React.useState(false)
   const [sortBy, setSortBy] = React.useState<'score' | 'name'>('score')
   const [selectedCountries, setSelectedCountries] = React.useState<string[]>([])
   const [selectedLevels, setSelectedLevels] = React.useState<string[]>([])
   const [fieldQuery, setFieldQuery] = React.useState('')
   const [hideIneligible, setHideIneligible] = React.useState(true)
-  const [viewMode, setViewMode] = React.useState<'list' | 'swipe'>('list')
+  const [viewMode, setViewMode] = React.useState<Mode>('browse')
   const [savedMatches, setSavedMatches] = React.useState<Set<string>>(new Set())
   const [hiddenMatches, setHiddenMatches] = React.useState<Set<string>>(new Set())
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const saved = localStorage.getItem('saved_matches')
+      if (saved) setSavedMatches(new Set(JSON.parse(saved)))
+      const hidden = localStorage.getItem('hidden_matches')
+      if (hidden) setHiddenMatches(new Set(JSON.parse(hidden)))
+    } catch (e) {
+      console.error('Failed to hydrate saved/hidden matches', e)
+    }
+  }, [])
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+    const load = async () => {
+      setLoading(true)
+      setError(null)
+      try {
+        const stored =
+          localStorage.getItem('scholarship_profile') || localStorage.getItem('profile')
+        const parsedProfile = stored ? JSON.parse(stored) : null
+        setProfile(parsedProfile || null)
+
+        let endpoint = '/api/match'
+        let body: any = {}
+
+        if (browseAll) {
+          endpoint = '/api/retrieve'
+          body = {
+            student_summary: 'Browse all scholarships for this demo profile.',
+            k: 60,
+          }
+        } else {
+          const studentSummary = parsedProfile?.summary
+          if (!studentSummary) {
+            setMatches([])
+            setError('No saved profile found. Complete onboarding to see personalized matches.')
+            return
+          }
+          const { minGpa, eligibility } = buildEligibility(parsedProfile)
+          body = {
+            student_summary: studentSummary,
+            k: 30,
+            ...(minGpa !== undefined ? { min_gpa: minGpa } : {}),
+            ...(eligibility ? { eligibility } : {}),
+          }
+        }
+
+        const res = await fetch(endpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body),
+        })
+        const data = await res.json()
+        if (!res.ok || data?.ok === false) {
+          throw new Error(data?.error || `Request failed (${res.status})`)
+        }
+        const rows: ApiMatchRow[] = data.rows || []
+        setMatches(rows.map((row, index) => toMatchCard(row, index, parsedProfile)))
+      } catch (e: any) {
+        console.error(e)
+        setError(String(e?.message || e))
+        setMatches(FALLBACK_MATCHES)
+      } finally {
+        setLoading(false)
+      }
+    }
+    void load()
+  }, [browseAll])
 
   const toggleSave = (id: string) => {
     setSavedMatches((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('saved_matches', JSON.stringify(Array.from(next)))
+      }
       return next
     })
   }
@@ -143,8 +208,20 @@ function MatchesPage() {
     setHiddenMatches((prev) => {
       const next = new Set(prev)
       next.add(id)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('hidden_matches', JSON.stringify(Array.from(next)))
+      }
       return next
     })
+  }
+
+  const removeSaved = (id: string) => {
+    setSavedMatches((prev) => {
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
+    hideMatch(id)
   }
 
   const onToggleCountry = (country: string) => {
@@ -159,607 +236,630 @@ function MatchesPage() {
     )
   }
 
-  React.useEffect(() => {
-    if (typeof window === 'undefined') return
-
-    async function load() {
-      setLoading(true)
-      setError(null)
-
-      try {
-        const stored =
-          localStorage.getItem('scholarship_profile') || localStorage.getItem('profile')
-        const profile = stored ? JSON.parse(stored) : null
-        let studentSummary: string | null = null
-        let endpoint = '/api/match'
-        let body: any = {}
-
-        if (browseAll) {
-          studentSummary = 'Browse all scholarships for this demo profile.'
-          endpoint = '/api/retrieve'
-          body = {
-            student_summary: studentSummary,
-            k: 50,
-          }
-        } else {
-          studentSummary = profile?.summary ?? null
-          if (!studentSummary) {
-            setMatches([])
-            setError(
-              'No saved profile found. Complete the onboarding flow to see personalized matches.',
-            )
-            return
-          }
-          endpoint = '/api/match'
-          const { minGpa, eligibility } = buildEligibility(profile)
-          body = {
-            student_summary: studentSummary,
-            k: 20,
-            ...(minGpa !== undefined ? { min_gpa: minGpa } : {}),
-            ...(eligibility ? { eligibility } : {}),
-          }
-        }
-
-        const res = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(body),
-        })
-        const data = await res.json()
-        if (!res.ok || !data.ok) {
-          throw new Error(data?.error || `Request failed (${res.status})`)
-        }
-
-        const rows: ApiMatchRow[] = data.rows || []
-
-        let next: MatchCard[] = rows.map((row, index) => {
-          const workloadMeta = computeWorkload(row)
-          const eligibilityStatus = evaluateEligibility(row, profile)
-          const baseScore = computeMatchScore(row, index)
-          const adjustedScore = adjustScoreForEligibility(baseScore, eligibilityStatus)
-          return {
-            id: String(row.id),
-            name: row.name,
-            provider: row.metadata?.provider_name || row.sponsor || 'Scholarship Provider',
-            amount: row.metadata?.amount_max ? `$${row.metadata.amount_max}` : (row.metadata?.amount_min ? `$${row.metadata.amount_min}` : 'Varies'),
-            deadline: row.metadata?.deadline ? new Date(row.metadata.deadline).toLocaleDateString() : 'Open',
-            daysLeft: '',
-            levelTags: formatTags(extractArray(row.metadata?.level_of_study)),
-            fieldTags: formatTags(extractFields(row)),
-            demographicTags: formatTags(
-              (row.metadata?.demographic_eligibility as string[] | undefined)?.filter(
-                (tag) => tag && tag !== 'none_specified',
-              ) ?? [],
-            ),
-            countryTags: formatTags(extractCountries(row)),
-            workload: workloadMeta.text,
-            workloadLabel: workloadMeta.label,
-            matchScore: adjustedScore,
-            status: eligibilityStatus.status === 'ineligible' ? 'ineligible' : undefined,
-          }
-        })
-
-        // Dedupe by scholarship id in case retrieval returns duplicates
-        const deduped = new Map<string, MatchCard>()
-        next.forEach((m) => {
-          const key = (m.id || m.name || '').toLowerCase()
-          const existing = deduped.get(key)
-          if (!existing || m.matchScore > existing.matchScore) {
-            deduped.set(key, m)
-          }
-        })
-        next = Array.from(deduped.values()).filter((m) => m.name)
-
-        // Optional rerank to honor /api/rerank when using profile-based matches.
-        if (!browseAll && studentSummary && rows.length > 0) {
-          try {
-            const rerankRes = await fetch('/api/rerank', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                student_summary: studentSummary,
-                candidates: rows.map((r) => ({
-                  id: String(r.id),
-                  name: r.name,
-                  snippet:
-                    (r.metadata?.description_raw as string | undefined) ??
-                    (r.metadata?.raw_text as string | undefined) ??
-                    '',
-                  min_gpa: r.min_gpa ?? undefined,
-                  country: r.country ?? extractCountries(r)[0] ?? undefined,
-                  fields: Array.isArray(r.fields) ? r.fields : [],
-                })),
-              }),
-            })
-            const rerankData = await rerankRes.json()
-            if (rerankRes.ok && rerankData?.ok && Array.isArray(rerankData.ranking)) {
-              const byId = new Map(next.map((m) => [m.id, m]))
-              next = rerankData.ranking
-                .map((r: any) => {
-                  const base = byId.get(String(r.id))
-                    if (!base) return null
-                    return {
-                      ...base,
-                      // keep original normalized score; rerank only affects order
-                      matchScore: base.matchScore,
-                    }
-                  })
-                  .filter(Boolean) as MatchCard[]
-            }
-          } catch (err) {
-            // If rerank fails, keep base vector ordering.
-          }
-        }
-
-        setMatches(next)
-      } catch (e: any) {
-        setError(String(e?.message || e || 'Failed to load matches; showing fallback.'))
-        setMatches(FALLBACK_MATCHES)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    void load()
-  }, [browseAll])
-
   const visibleMatches = React.useMemo(() => {
-    const base = [...matches]
-    const filtered = base.filter((match) => {
-      if (hiddenMatches.has(match.id)) return false
-      if (hideIneligible && match.status === 'ineligible') return false
-      if (selectedCountries.length) {
-        const tags = match.countryTags.map((t) => normalizeCountry(t))
-        const required = selectedCountries.map(normalizeCountry)
-        if (!required.some((c) => tags.includes(c))) return false
-      }
-      if (selectedLevels.length) {
-        const levels = match.levelTags.map((l) => l.toLowerCase())
-        const required = selectedLevels.map((l) => l.toLowerCase())
-        if (!required.some((lvl) => levels.includes(lvl))) return false
-      }
-      if (fieldQuery.trim()) {
-        const q = fieldQuery.trim().toLowerCase()
-        const fields = match.fieldTags.map((f) => f.toLowerCase())
-        if (!fields.some((f) => f.includes(q))) return false
-      }
-      return true
-    })
-    if (sortBy === 'score') {
-      return filtered.sort((a, b) => b.matchScore - a.matchScore)
-    }
-    return filtered.sort((a, b) => a.name.localeCompare(b.name))
-  }, [matches, sortBy, selectedCountries, selectedLevels, fieldQuery, hideIneligible])
+    const active = matches.filter((m) => !hiddenMatches.has(m.id))
+    return active
+      .filter((m) => {
+        if (hideIneligible && m.status === 'ineligible') return false
+        if (selectedCountries.length && !m.countryTags.some((c) => selectedCountries.includes(c)))
+          return false
+        if (
+          selectedLevels.length &&
+          !m.levelTags.some((l) =>
+            selectedLevels.some((sel) => l.toLowerCase().includes(sel.toLowerCase())),
+          )
+        )
+          return false
+        if (
+          fieldQuery.trim() &&
+          !m.fieldTags.some((f) => f.toLowerCase().includes(fieldQuery.toLowerCase()))
+        )
+          return false
+        return true
+      })
+      .sort((a, b) => {
+        if (sortBy === 'name') return a.name.localeCompare(b.name)
+        return b.matchScore - a.matchScore
+      })
+  }, [matches, hiddenMatches, hideIneligible, selectedCountries, selectedLevels, fieldQuery, sortBy])
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] bg-muted/30">
-      <main className="mx-auto flex max-w-6xl flex-col gap-6 px-4 py-8">
-        <header className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-          <div className="space-y-1">
-            <h1 className="font-display text-2xl font-bold tracking-tight sm:text-3xl">
-              {browseAll ? 'Browse scholarships' : 'Your scholarship matches'}
-            </h1>
-            <p className="text-sm text-muted-foreground">
-              {browseAll
-                ? 'Showing a broad set of scholarships. Use filters to narrow down.'
-                : 'Based on your profile and embeddings. We ranked scholarships by semantic fit.'}
+    <div className="flex min-h-[calc(100vh-4rem)] flex-col bg-muted/10 pb-12">
+      <div className="mx-auto w-full max-w-6xl px-4 py-8 space-y-4">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h1 className="text-3xl font-bold tracking-tight">Matches</h1>
+            <p className="text-muted-foreground">
+              Uses your saved profile and embeddings. Semantically ranked by fit.
             </p>
           </div>
-          {error && (
-            <div className="rounded-md bg-destructive/10 p-3 text-sm text-destructive">
-              {error}
-            </div>
-          )}
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="outline" className="lg:hidden">
-                <SlidersHorizontal className="mr-2 h-4 w-4" />
-                Filters
-              </Button>
-            </SheetTrigger>
-            <SheetContent side="left">
-              <SheetHeader>
-                <SheetTitle>Filters</SheetTitle>
-              </SheetHeader>
-              <div className="mt-4">
-                <FiltersContent
-                  selectedCountries={selectedCountries}
-                  selectedLevels={selectedLevels}
-                  fieldQuery={fieldQuery}
-                  hideIneligible={hideIneligible}
-                  onToggleCountry={onToggleCountry}
-                  onToggleLevel={onToggleLevel}
-                  onFieldQuery={setFieldQuery}
-                  onToggleHideIneligible={setHideIneligible}
-                />
-              </div>
-            </SheetContent>
-          </Sheet>
-        </header>
+          <div className="flex items-center gap-2 text-xs">
+            <Badge variant="outline" className="border-dashed">
+              Profile-based
+            </Badge>
+            <Badge variant="outline" className="border-dashed">
+              Embeddings ranked
+            </Badge>
+          </div>
+        </div>
 
-        <div className="flex flex-col gap-6 lg:flex-row">
-          {/* Left column: filters */}
-          <aside className="hidden w-64 shrink-0 lg:block">
-            <Card className="sticky top-24">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <SlidersHorizontal className="h-4 w-4" />
-                  Filters
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  Start broad, then narrow to the best fits.
-                </CardDescription>
-              </CardHeader>
-            <CardContent>
-              <FiltersContent
-                selectedCountries={selectedCountries}
-                selectedLevels={selectedLevels}
-                fieldQuery={fieldQuery}
-                hideIneligible={hideIneligible}
-                onToggleCountry={(v) =>
-                  setSelectedCountries((prev) =>
-                    prev.includes(v) ? prev.filter((c) => c !== v) : [...prev, v],
-                  )
-                }
-                onToggleLevel={(v) =>
-                  setSelectedLevels((prev) =>
-                    prev.includes(v) ? prev.filter((c) => c !== v) : [...prev, v],
-                  )
-                }
-                onFieldQuery={setFieldQuery}
-                onToggleHideIneligible={(val) => setHideIneligible(val)}
-              />
+        {error && (
+          <Card className="border-destructive/30 bg-destructive/5">
+            <CardContent className="flex items-center gap-2 py-4 text-sm text-destructive">
+              <BadgeCheck className="h-4 w-4" />
+              <span>{error}</span>
             </CardContent>
           </Card>
-        </aside>
+        )}
 
-          {/* Right column: matches */}
-          <section className="flex-1 space-y-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <section className="flex flex-wrap gap-2 text-xs text-muted-foreground">
-                <span className="inline-flex items-center gap-1 rounded-full bg-background px-2 py-1 ring-1 ring-border">
-                  <CheckCircle2 className="h-3 w-3 text-emerald-500" />
-                  Uses your saved profile and embeddings
-                </span>
-                <span className="inline-flex items-center gap-1 rounded-full bg-background px-2 py-1 ring-1 ring-border">
-                  <CalendarDays className="h-3 w-3" />
-                  Semantically ranked by fit
-                </span>
-              </section>
-              <div className="flex flex-wrap items-center gap-2">
-                <Button
-                  variant={browseAll ? 'outline' : 'default'}
-                  size="sm"
-                  className="inline-flex items-center gap-2"
-                  onClick={() => setBrowseAll(false)}
-                >
-                  <SlidersHorizontal className="h-4 w-4" />
-                  See my matches
-                </Button>
-                <Button
-                  variant={viewMode === 'swipe' ? 'default' : 'outline'}
-                  size="sm"
-                  className="inline-flex items-center gap-2"
-                  onClick={() => setViewMode('swipe')}
-                >
-                  <Sparkles className="h-4 w-4" />
-                  Find My Match
-                </Button>
-                <Button
-                  variant={browseAll && viewMode === 'list' ? 'default' : 'outline'}
-                  size="sm"
-                  className="inline-flex items-center gap-2"
-                  onClick={() => setBrowseAll(true)}
-                >
-                  <Filter className="h-4 w-4" />
-                  Browse all scholarships
-                </Button>
-                <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                  <span>Sort by</span>
-                  <Select
-                    value={sortBy}
-                    onValueChange={(val) =>
-                      setSortBy((val as 'score' | 'name') ?? 'score')
-                    }
-                  >
-                    <SelectTrigger className="h-8 w-[130px]">
-                      <SelectValue placeholder="Sort by" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="score">Best match</SelectItem>
-                      <SelectItem value="name">Name (A–Z)</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {loading && (
-                  <p className="text-xs text-muted-foreground">Loading matches…</p>
-                )}
-              </div>
-            </div>
-
-            {viewMode === 'swipe' && visibleMatches.length > 0 ? (
-              <div className="mx-auto max-w-md py-8">
-                <div className="relative aspect-[3/4] w-full">
-                  {visibleMatches.slice(0, 1).map((match) => (
-                    <Card key={match.id} className="absolute inset-0 flex flex-col overflow-hidden shadow-xl">
-                      <div className="flex-1 bg-gradient-to-br from-primary/10 to-primary/5 p-6">
-                        <div className="flex h-full flex-col justify-center text-center">
-                          <h2 className="mb-2 text-3xl font-bold tracking-tight">{match.amount}</h2>
-                          <p className="text-lg font-medium text-muted-foreground">{match.daysLeft || 'Deadline approaching'}</p>
-                        </div>
-                      </div>
-                      <div className="p-6">
-                        <div className="mb-4 flex flex-wrap gap-2">
-                          {match.status !== 'ineligible' && (
-                            <Badge variant="secondary" className="bg-green-100 text-green-700">Eligible</Badge>
-                          )}
-                          <Badge variant="outline">{match.workloadLabel} Workload</Badge>
-                          {match.countryTags[0] && <Badge variant="outline">{match.countryTags[0]}</Badge>}
-                        </div>
-                        <h3 className="mb-1 text-xl font-bold">{match.name}</h3>
-                        <p className="mb-4 text-sm text-muted-foreground">{match.provider}</p>
-                        
-                        <div className="space-y-2 text-sm">
-                          <div className="flex items-center gap-2">
-                            <span className="font-medium">Requires:</span>
-                            <span>{match.workload}</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="mt-auto grid grid-cols-2 gap-4 border-t p-4">
-                        <Button 
-                          variant="outline" 
-                          size="lg" 
-                          className="h-14 rounded-full border-2 hover:bg-muted"
-                          onClick={() => hideMatch(match.id)}
-                        >
-                          <X className="mr-2 h-5 w-5" />
-                          Hide
-                        </Button>
-                        <Button 
-                          size="lg" 
-                          className="h-14 rounded-full bg-green-600 hover:bg-green-700"
-                          onClick={() => {
-                            toggleSave(match.id)
-                            hideMatch(match.id) // Move to next
-                          }}
-                        >
-                          <Heart className="mr-2 h-5 w-5 fill-current" />
-                          Save
-                        </Button>
-                      </div>
-                    </Card>
-                  ))}
-                  <div className="absolute -z-10 top-2 left-2 right-2 bottom-0 rounded-xl bg-muted shadow-lg" />
-                  <div className="absolute -z-20 top-4 left-4 right-4 bottom-0 rounded-xl bg-muted/50 shadow" />
-                </div>
-                <div className="mt-8 text-center">
-                  <p className="text-sm text-muted-foreground">{visibleMatches.length} scholarships left to review</p>
-                </div>
-              </div>
-            ) : (
-              <section className="grid gap-4 md:grid-cols-2">
-              {loading && visibleMatches.length === 0 && (
-                <>
-                  {Array.from({ length: 4 }).map((_, idx) => (
-                    <Card key={idx} className="flex h-full flex-col justify-between">
-                      <CardHeader className="pb-3">
-                        <Skeleton className="mb-2 h-4 w-3/4" />
-                        <Skeleton className="h-3 w-1/2" />
-                      </CardHeader>
-                      <CardContent className="pb-3">
-                        <div className="flex flex-wrap gap-2">
-                          <Skeleton className="h-4 w-16 rounded-full" />
-                          <Skeleton className="h-4 w-20 rounded-full" />
-                          <Skeleton className="h-4 w-24 rounded-full" />
-                        </div>
-                      </CardContent>
-                      <CardFooter className="flex items-center justify-between border-t bg-muted/5 px-6 py-3">
-                        <Skeleton className="h-3 w-40" />
-                        <Skeleton className="h-8 w-24 rounded-full" />
-                      </CardFooter>
-                    </Card>
-                  ))}
-                </>
-              )}
-
-              {!loading && visibleMatches.map((match) => (
-                <Card key={match.id} className="flex h-full flex-col justify-between">
-                  <CardHeader className="pb-3">
-                    <div className="flex items-start justify-between gap-3">
-                      <div className="space-y-1">
-                        <CardTitle className="text-base">{match.name}</CardTitle>
-                        <CardDescription className="text-xs">
-                          {match.provider}
-                        </CardDescription>
-                      </div>
-                      <Badge variant="outline" className="text-xs">
-                        Match score: {match.matchScore}
-                      </Badge>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="pb-3">
-                    <div className="mb-4">
-                      <div className="flex items-baseline justify-between">
-                        <span className="text-lg font-bold text-primary">{match.amount}</span>
-                        <span className="text-xs text-muted-foreground">Deadline: {match.deadline}</span>
-                      </div>
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {match.demographicTags.map((tag) => (
-                        <Badge
-                          key={tag}
-                          variant="outline"
-                          className="border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-800 dark:bg-amber-950 dark:text-amber-400"
-                        >
-                          {tag}
-                        </Badge>
-                      ))}
-                      {match.countryTags.map((tag) => (
-                        <Badge key={tag} variant="outline" className="border-sky-200 bg-sky-50 text-sky-700 dark:border-sky-800 dark:bg-sky-950 dark:text-sky-300">
-                          {tag}
-                        </Badge>
-                      ))}
-                      {match.fieldTags.map((tag) => (
-                        <Badge key={tag} variant="outline">
-                          {tag}
-                        </Badge>
-                      ))}
-                      {match.levelTags.map((tag) => (
-                        <Badge key={tag} variant="secondary" className="font-normal">
-                          {tag}
-                        </Badge>
-                      ))}
-                    </div>
-                  </CardContent>
-                  <CardFooter className="flex items-center justify-between border-t bg-muted/5 px-6 py-3">
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      <span
-                        className={`inline-block h-2 w-2 rounded-full ${
-                          match.workloadLabel === 'Light'
-                            ? 'bg-green-500'
-                            : match.workloadLabel === 'Medium'
-                              ? 'bg-yellow-500'
-                              : 'bg-red-500'
-                        }`}
-                      />
-                      <span className="font-medium">
-                        {match.workloadLabel} Workload:
-                      </span>
-                      <span>{match.workload}</span>
-                    </div>
-                    <Button size="sm" asChild>
-                      <Link
-                        to="/scholarship/$id"
-                        params={{ id: match.id }}
-                        search={{
-                          score: match.matchScore,
-                          eligibility: match.status === 'ineligible' ? 'ineligible' : 'eligible',
-                        }}
-                      >
-                        View Details
-                        <ArrowRight className="ml-2 h-3 w-3" />
-                      </Link>
-                    </Button>
-                  </CardFooter>
-                  <div className="absolute top-4 right-4">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 rounded-full bg-background/80 shadow-sm hover:bg-background"
-                      onClick={() => toggleSave(match.id)}
-                    >
-                      <Heart className={`h-4 w-4 ${savedMatches.has(match.id) ? 'fill-red-500 text-red-500' : 'text-muted-foreground'}`} />
-                    </Button>
-                  </div>
-                </Card>
-              ))}
-            </section>
-            )}
-          </section>
+        <div className="flex flex-wrap items-center gap-2">
+          <Button
+            size="sm"
+            variant={viewMode === 'swipe' ? 'default' : 'outline'}
+            onClick={() => {
+              setViewMode('swipe')
+              setBrowseAll(false)
+            }}
+          >
+            <Sparkles className="mr-2 h-4 w-4" />
+            Find My Match
+          </Button>
+          <Button
+            size="sm"
+            variant={viewMode === 'list' ? 'default' : 'outline'}
+            onClick={() => {
+              setViewMode('list')
+              setBrowseAll(false)
+            }}
+          >
+            <List className="mr-2 h-4 w-4" />
+            See my matches
+          </Button>
+          <Button
+            size="sm"
+            variant={viewMode === 'browse' ? 'default' : 'outline'}
+            onClick={() => {
+              setViewMode('browse')
+              setBrowseAll(true)
+            }}
+          >
+            <Layers className="mr-2 h-4 w-4" />
+            Browse all
+          </Button>
+          <div className="flex items-center gap-2 text-sm">
+            <span className="text-xs text-muted-foreground">Sort by</span>
+            <Select value={sortBy} onValueChange={(v) => setSortBy(v as any)}>
+              <SelectTrigger className="h-8 w-36 text-xs">
+                <SelectValue placeholder="Best match" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="score">Best match</SelectItem>
+                <SelectItem value="name">Name (A-Z)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="ml-auto hidden lg:flex items-center gap-2 text-xs text-muted-foreground">
+            <Checkbox
+              checked={hideIneligible}
+              onCheckedChange={(v) => setHideIneligible(Boolean(v))}
+            />
+            <span>Hide ineligible</span>
+          </div>
         </div>
-      </main>
+
+        <div className="flex flex-col gap-6 lg:flex-row">
+          <aside className="hidden w-full rounded-lg border bg-card p-4 lg:block lg:w-72">
+            <FiltersContent
+              selectedCountries={selectedCountries}
+              selectedLevels={selectedLevels}
+              fieldQuery={fieldQuery}
+              hideIneligible={hideIneligible}
+              onToggleCountry={onToggleCountry}
+              onToggleLevel={onToggleLevel}
+              onFieldQuery={setFieldQuery}
+              onToggleHideIneligible={setHideIneligible}
+            />
+          </aside>
+
+          <div className="flex-1 space-y-4">
+            {viewMode === 'swipe' && (
+              <SwipeDeck
+                matches={visibleMatches}
+                onSave={toggleSave}
+                onSkip={hideMatch}
+                savedIds={savedMatches}
+                loading={loading}
+              />
+            )}
+            {viewMode === 'list' && (
+              <ListView
+                matches={visibleMatches.filter((m) => savedMatches.has(m.id))}
+                loading={loading}
+                onRemove={removeSaved}
+              />
+            )}
+            {viewMode === 'browse' && (
+              <BrowseView
+                matches={visibleMatches}
+                loading={loading}
+                onSave={toggleSave}
+                onSkip={hideMatch}
+                savedIds={savedMatches}
+              />
+            )}
+            {!loading && visibleMatches.length === 0 && (
+              <Card className="border-dashed">
+                <CardContent className="py-10 text-center">
+                  <p className="text-sm text-muted-foreground">
+                    No matches under these filters yet. Try widening filters or browse all.
+                  </p>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+        </div>
+      </div>
     </div>
   )
 }
 
-function formatTags(tags: string[]): string[] {
-  return tags
-    .map((t) =>
-      t
-        .replace(/_/g, ' ')
-        .replace(/\b\w/g, (ch) => ch.toUpperCase()),
-    )
-    .filter(Boolean)
+function SwipeDeck({
+  matches,
+  onSave,
+  onSkip,
+  savedIds,
+  loading,
+}: {
+  matches: MatchCard[]
+  onSave: (id: string) => void
+  onSkip: (id: string) => void
+  savedIds: Set<string>
+  loading?: boolean
+}) {
+  const [index, setIndex] = React.useState(0)
+  React.useEffect(() => setIndex(0), [matches])
+  if (loading) return <p className="text-sm text-muted-foreground">Loading...</p>
+  if (!matches.length) return null
+  const current = matches[index]
+  const progress = `${index + 1} of ${matches.length} matches`
+  return (
+    <Card className="shadow-md">
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>Find My Match</CardTitle>
+            <CardDescription>
+              Swipe through AI-ranked matches. Saved scholarships appear in your Dashboard and Planner.
+            </CardDescription>
+          </div>
+          <Badge variant="secondary" className="text-[11px]">
+            Semantically ranked
+          </Badge>
+        </div>
+      </CardHeader>
+      <CardContent>
+        <SwipeCard match={current} />
+      </CardContent>
+      <CardFooter className="flex flex-col gap-3">
+        <div className="flex w-full flex-wrap gap-2">
+          <Button
+            className="flex-1"
+            variant="outline"
+            onClick={() => {
+              onSkip(current.id)
+              setIndex((i) => Math.min(i + 1, matches.length - 1))
+            }}
+          >
+            <X className="mr-2 h-4 w-4" />
+            Skip
+          </Button>
+          <Button
+            className="flex-1"
+            onClick={() => {
+              onSave(current.id)
+              setIndex((i) => Math.min(i + 1, matches.length - 1))
+            }}
+          >
+            <Heart className="mr-2 h-4 w-4" />
+            {savedIds.has(current.id) ? 'Saved' : 'Save'}
+          </Button>
+        </div>
+        <p className="text-xs text-muted-foreground">
+          {progress} | Your choices help re-rank future recommendations.
+        </p>
+      </CardFooter>
+    </Card>
+  )
+}
+
+function SwipeCard({ match }: { match: MatchCard }) {
+  return (
+    <div className="space-y-3">
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <Badge variant="outline">{match.amount}</Badge>
+        <Badge variant="outline">
+          <CalendarDays className="mr-1 h-3 w-3" />
+          {match.deadline}
+        </Badge>
+        <Badge variant="secondary">{match.workload}</Badge>
+        {match.countryTags?.[0] && <Badge variant="outline">{match.countryTags[0]}</Badge>}
+        {match.winnerInsights ? (
+          <Badge variant="secondary" className="bg-primary/10 text-primary">
+            Winner insights available
+          </Badge>
+        ) : null}
+      </div>
+      <div>
+        <h3 className="text-xl font-semibold">{match.name}</h3>
+        <p className="text-sm text-muted-foreground">{match.provider}</p>
+      </div>
+      <div className="text-sm text-muted-foreground">
+        Requires: {match.workload} | Match: {match.matchScore} ({matchTier(match.matchScore)}){' '}
+        {match.whyMatch ? `- ${match.whyMatch}` : ''}
+      </div>
+      <div className="flex flex-wrap gap-2 text-xs text-muted-foreground">
+        {match.fieldTags.map((t) => (
+          <Badge key={t} variant="outline">
+            {t}
+          </Badge>
+        ))}
+        {match.demographicTags.map((t) => (
+          <Badge key={t} variant="secondary">
+            {t}
+          </Badge>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+function ListView({
+  matches,
+  loading,
+  onRemove,
+}: {
+  matches: MatchCard[]
+  loading?: boolean
+  onRemove: (id: string) => void
+}) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Saved & Active Matches</CardTitle>
+        <CardDescription>Manage scholarships you have saved or are working on.</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {loading ? (
+          <p className="text-sm text-muted-foreground">Loading...</p>
+        ) : matches.length === 0 ? (
+          <p className="text-sm text-muted-foreground">No saved matches yet.</p>
+        ) : (
+          matches.map((m) => (
+            <div key={m.id} className="rounded-md border p-3">
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <p className="text-sm font-semibold">{m.name}</p>
+                    <Badge variant="secondary" className="text-[11px]">
+                      {m.matchScore}% fit
+                    </Badge>
+                  </div>
+                  <p className="text-xs text-muted-foreground">{m.provider}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" variant="ghost" onClick={() => onRemove(m.id)}>
+                    Remove
+                  </Button>
+                  <Button size="sm" variant="outline" asChild>
+                    <a href={`/scholarship/${m.id}`}>
+                      Open
+                      <ArrowRight className="ml-1 h-4 w-4" />
+                    </a>
+                  </Button>
+                </div>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+                <Badge variant="outline">{m.amount}</Badge>
+                <Badge variant="outline">{m.deadline}</Badge>
+                <Badge variant="secondary">{m.workload}</Badge>
+              </div>
+            </div>
+          ))
+        )}
+      </CardContent>
+    </Card>
+  )
+}
+
+function BrowseView({
+  matches,
+  loading,
+  onSkip,
+  onSave,
+  savedIds,
+}: {
+  matches: MatchCard[]
+  loading?: boolean
+  onSkip: (id: string) => void
+  onSave: (id: string) => void
+  savedIds: Set<string>
+}) {
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {loading
+        ? Array.from({ length: 6 }).map((_, idx) => (
+            <Card key={idx} className="h-full">
+              <CardHeader className="pb-2">
+                <Skeleton className="h-4 w-24" />
+                <Skeleton className="mt-2 h-4 w-36" />
+              </CardHeader>
+              <CardContent className="space-y-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-5/6" />
+              </CardContent>
+              <CardFooter className="gap-2">
+                <Skeleton className="h-9 w-20" />
+                <Skeleton className="h-9 w-20" />
+              </CardFooter>
+            </Card>
+          ))
+        : matches.map((match) => (
+            <MatchCardCompact
+              key={match.id}
+              match={match}
+              onSave={() => onSave(match.id)}
+              onSkip={() => onSkip(match.id)}
+              saved={savedIds.has(match.id)}
+            />
+          ))}
+    </div>
+  )
+}
+
+function FiltersContent({
+  selectedCountries,
+  selectedLevels,
+  fieldQuery,
+  hideIneligible,
+  onToggleCountry,
+  onToggleLevel,
+  onFieldQuery,
+  onToggleHideIneligible,
+}: {
+  selectedCountries: string[]
+  selectedLevels: string[]
+  fieldQuery: string
+  hideIneligible: boolean
+  onToggleCountry: (value: string) => void
+  onToggleLevel: (value: string) => void
+  onFieldQuery: (value: string) => void
+  onToggleHideIneligible: (value: boolean) => void
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-muted-foreground">Country / Region</p>
+        <div className="space-y-1">
+          {['Canada', 'United States', 'United Kingdom', 'Australia'].map((label) => {
+            const checked = selectedCountries.includes(label)
+            return (
+              <div key={label} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`country-${label}`}
+                  checked={checked}
+                  onCheckedChange={() => onToggleCountry(label)}
+                />
+                <label
+                  htmlFor={`country-${label}`}
+                  className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  {label}
+                </label>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+      <div className="space-y-2">
+        <p className="text-xs font-medium text-muted-foreground">Level of Study</p>
+        <div className="space-y-1">
+          {['High School', 'Undergrad', 'Graduate', 'Any'].map((label) => {
+            const checked = selectedLevels.includes(label)
+            return (
+              <div key={label} className="flex items-center space-x-2">
+                <Checkbox
+                  id={`level-${label}`}
+                  checked={checked}
+                  onCheckedChange={() => onToggleLevel(label)}
+                />
+                <label
+                  htmlFor={`level-${label}`}
+                  className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+                >
+                  {label}
+                </label>
+              </div>
+            )
+          })}
+        </div>
+      </div>
+      <div className="space-y-2">
+        <label className="text-xs font-medium text-muted-foreground">Fields of Study</label>
+        <Input
+          placeholder="Search fields..."
+          className="h-9"
+          value={fieldQuery}
+          onChange={(e) => onFieldQuery(e.target.value)}
+        />
+      </div>
+      <div className="space-y-3">
+        <label className="text-xs font-medium text-muted-foreground">Workload</label>
+        <div className="flex flex-wrap gap-2">
+          {['All', 'Light', 'Medium', 'Heavy'].map((label) => (
+            <Badge
+              key={label}
+              variant="outline"
+              className="cursor-pointer"
+              onClick={() => onFieldQuery(label === 'All' ? '' : label)}
+            >
+              {label}
+            </Badge>
+          ))}
+        </div>
+      </div>
+      <div className="space-y-3">
+        <div className="flex items-center space-x-2">
+          <Checkbox
+            id="ineligible"
+            checked={hideIneligible}
+            onCheckedChange={(v) => onToggleHideIneligible(Boolean(v))}
+          />
+          <label
+            htmlFor="ineligible"
+            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
+          >
+            Hide ineligible
+          </label>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function MatchCardCompact({
+  match,
+  onSave,
+  onSkip,
+  saved,
+}: {
+  match: MatchCard
+  onSave: () => void
+  onSkip: () => void
+  saved: boolean
+}) {
+  return (
+    <Card className="h-full">
+      <CardHeader className="pb-2">
+        <CardTitle className="text-sm">{match.name}</CardTitle>
+        <CardDescription className="text-xs">{match.provider}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-2 text-sm text-muted-foreground">
+        <div className="flex flex-wrap gap-2 text-[11px]">
+          <Badge variant="outline">{match.amount}</Badge>
+          <Badge variant="outline">{match.deadline}</Badge>
+          <Badge variant="secondary">{match.workload}</Badge>
+        </div>
+        <p className="text-xs">
+          Match: {match.matchScore}% {match.whyMatch ? `- ${match.whyMatch}` : ''}
+        </p>
+      </CardContent>
+      <CardFooter className="flex items-center gap-2">
+        <Button size="sm" variant="outline" onClick={onSkip} className="flex-1">
+          Skip
+        </Button>
+        <Button size="sm" onClick={onSave} className="flex-1" variant={saved ? 'secondary' : 'default'}>
+          {saved ? 'Saved' : 'Save'}
+        </Button>
+      </CardFooter>
+    </Card>
+  )
+}
+
+function matchTier(score: number) {
+  if (score >= 85) return 'Excellent'
+  if (score >= 70) return 'Good'
+  if (score >= 50) return 'Okay'
+  return 'Unknown'
+}
+
+function toMatchCard(row: ApiMatchRow, fallbackIndex: number): MatchCard {
+  const workloadMeta = computeWorkload(row)
+  const eligibilityStatus = evaluateEligibility(row, null)
+  const baseScore = computeMatchScore(row, fallbackIndex)
+  const adjustedScore = adjustScoreForEligibility(baseScore, eligibilityStatus)
+  return {
+    id: String(row.id),
+    name: row.name,
+    provider: row.metadata?.provider_name || row.sponsor || 'Scholarship Provider',
+    amount: row.metadata?.amount_max
+      ? `$${row.metadata.amount_max}`
+      : row.metadata?.amount_min
+        ? `$${row.metadata.amount_min}`
+        : 'Varies',
+    deadline: row.metadata?.deadline ? new Date(row.metadata.deadline).toLocaleDateString() : 'Open',
+    daysLeft: '',
+    levelTags: formatTags(extractArray(row.metadata?.level_of_study)),
+    fieldTags: formatTags(extractFields(row)),
+    demographicTags: formatTags(
+      (row.metadata?.demographic_eligibility as string[] | undefined)?.filter(
+        (tag) => tag && tag !== 'none_specified',
+      ) ?? [],
+    ),
+    countryTags: formatTags(extractCountries(row)),
+    workload: workloadMeta.text,
+    workloadLabel: workloadMeta.label,
+    matchScore: adjustedScore,
+    status: eligibilityStatus.status === 'ineligible' ? 'ineligible' : undefined,
+    whyMatch: row.metadata?.why_fit || row.metadata?.why_match || 'Highlights your profile fit.',
+    winnerInsights: Boolean(row.metadata?.winner_patterns),
+  }
+}
+
+function buildEligibility(profile: any) {
+  const minGpa = profile?.gpa ? Number(profile.gpa) : undefined
+  const eligibility: any = {}
+  if (profile?.country) eligibility.country = profile.country
+  if (profile?.citizenship) eligibility.citizenship = profile.citizenship
+  if (profile?.backgroundTags) eligibility.demographic = profile.backgroundTags
+  return { minGpa, eligibility }
+}
+
+function extractFields(row: ApiMatchRow) {
+  const fields = Array.isArray(row.fields) ? row.fields : []
+  const metaFields = Array.isArray(row.metadata?.fields_of_study) ? row.metadata?.fields_of_study : []
+  return [...fields, ...(metaFields || [])]
 }
 
 function extractArray(value: any): string[] {
-  if (Array.isArray(value)) {
-    return value.map(String).filter(Boolean)
-  }
+  if (Array.isArray(value)) return value.map(String).filter(Boolean)
   if (typeof value === 'string' && value.length > 0) {
     return [value]
   }
   return []
 }
 
-function extractFields(row: ApiMatchRow): string[] {
-  if (Array.isArray(row.fields) && row.fields.length) {
-    return row.fields.map(String)
-  }
-  return extractArray(row.metadata?.fields_of_study)
+function extractCountries(row: ApiMatchRow) {
+  const metadata = row.metadata || {}
+  const countries =
+    extractArray(metadata.country_eligibility) ||
+    extractArray((metadata as any).countryEligibility) ||
+    extractArray((metadata as any).countries)
+  if (row.country) countries.push(row.country)
+  return countries.map((c) => (c.length === 2 ? c.toUpperCase() : c))
 }
 
-function extractCountries(row: ApiMatchRow): string[] {
+function formatTags(tags: string[]) {
+  if (!tags.length) return ['Any']
+  return tags.map((t) => t.replace(/_/g, ' '))
+}
+
+function computeWorkload(row: ApiMatchRow) {
   const meta = row.metadata || {}
-  const fromMeta = extractArray((meta as any).country_eligibility)
-  if (fromMeta.length) return fromMeta
-  if (row.country) return [row.country]
-  const source = typeof (meta as any).source_country === 'string' ? (meta as any).source_country : null
-  return source ? [source] : []
-}
-
-function computeWorkload(
-  row: ApiMatchRow,
-): { label: 'Light' | 'Medium' | 'Heavy'; text: string } {
-  const components = row.metadata?.application_components
-  if (!components || typeof components !== 'object') {
-    return { label: 'Medium', text: 'See components' }
-  }
-
+  const components = meta.application_components || {}
+  let label: 'Light' | 'Medium' | 'Heavy' = 'Light'
+  let score = 0
   const essays = Number(components.essays ?? 0)
   const refs = Number(components.reference_letters ?? 0)
-  const transcript = Boolean(components.transcript_required)
-  const resume = Boolean(components.resume_required)
-  const portfolio = Boolean(components.portfolio_required)
-  const interview = Boolean(components.interview_possible)
-
-  const flags = [
-    essays ? `${essays} essay${essays === 1 ? '' : 's'}` : null,
-    refs ? `${refs} rec${refs === 1 ? '' : 's'}` : null,
-    transcript ? 'Transcript' : null,
-    resume ? 'Resume' : null,
-    portfolio ? 'Portfolio' : null,
-    interview ? 'Interview' : null,
-  ].filter(Boolean) as string[]
-
-  let label: 'Light' | 'Medium' | 'Heavy' = 'Medium'
-  if (essays >= 2 || refs >= 2 || (essays >= 1 && refs >= 1)) {
-    label = 'Heavy'
-  } else if (essays === 0 && refs === 0 && !transcript && !resume && !portfolio) {
-    label = 'Light'
-  }
-
-  return {
-    label,
-    text: flags.length > 0 ? flags.join(' • ') : 'Short form',
-  }
-}
-
-function normalizeGpa(profile?: any): number | undefined {
-  if (!profile) return undefined
-  const raw = profile.gpa ? Number(profile.gpa) : NaN
-  const scale = profile.gpaScale ? Number(profile.gpaScale) : 4
-  if (Number.isNaN(raw)) return undefined
-  if (!scale || scale === 4 || scale === 4.0) return raw
-  if (scale === 100) return Number((raw / 25).toFixed(2))
-  return raw
-}
-
-function buildEligibility(profile?: any) {
-  if (!profile) return { minGpa: undefined, eligibility: undefined }
-  const minGpa = normalizeGpa(profile)
-  const eligibility = {
-    country: profile.country || undefined,
-    level_of_study: profile.level || undefined,
-    fields_of_study: profile.program ? [profile.program] : undefined,
-    citizenship: profile.citizenship || undefined,
-    demographic_self: Array.isArray(profile.backgroundTags)
-      ? profile.backgroundTags.filter(Boolean)
-      : undefined,
-  }
-  const hasEligibility = Object.values(eligibility).some(Boolean)
-  return { minGpa, eligibility: hasEligibility ? eligibility : undefined }
+  if (essays) score += essays * 2
+  if (refs) score += refs
+  if (components.transcript_required) score += 1
+  if (components.resume_required) score += 1
+  if (components.portfolio_required) score += 2
+  if (components.interview_possible) score += 2
+  if (score >= 5) label = 'Heavy'
+  else if (score >= 3) label = 'Medium'
+  const text = `${essays || 0} essay(s)${refs ? ` + ${refs} rec(s)` : ''}`
+  return { text, label }
 }
 
 function normalizeValue(value?: string | null) {
@@ -785,14 +885,13 @@ function normalizeCountry(value?: string | null) {
 }
 
 function evaluateEligibility(row: ApiMatchRow, profile?: any) {
-  if (!profile) return { status: 'unknown' as const, reasons: [] as string[] }
-
-  const reasons: string[] = []
   let ineligible = false
+  const reasons: string[] = []
+  if (!profile) return { status: 'eligible' as const, reasons }
 
   const profileCountry = normalizeCountry(profile.country)
   const profileCitizenship = normalizeValue(profile.citizenship)
-  const profileGpa = normalizeGpa(profile)
+  const profileGpa = profile.gpa ? Number(profile.gpa) : undefined
   const profileTags: string[] = Array.isArray(profile.backgroundTags)
     ? profile.backgroundTags.map(normalizeValue).filter(Boolean)
     : []
@@ -857,140 +956,4 @@ function computeMatchScore(row: ApiMatchRow, fallbackIndex: number) {
   return Math.max(0, Math.min(100, 70 - fallbackIndex))
 }
 
-type FiltersProps = {
-  selectedCountries: string[]
-  selectedLevels: string[]
-  fieldQuery: string
-  hideIneligible: boolean
-  onToggleCountry: (value: string) => void
-  onToggleLevel: (value: string) => void
-  onFieldQuery: (value: string) => void
-  onToggleHideIneligible: (value: boolean) => void
-}
-
-function FiltersContent({
-  selectedCountries,
-  selectedLevels,
-  fieldQuery,
-  hideIneligible,
-  onToggleCountry,
-  onToggleLevel,
-  onFieldQuery,
-  onToggleHideIneligible,
-}: FiltersProps) {
-  return (
-    <div className="space-y-6">
-      <div className="space-y-2">
-        <p className="text-xs font-medium text-muted-foreground">
-          Country / Region
-        </p>
-        <div className="space-y-1">
-          {['Canada', 'United States', 'United Kingdom', 'Australia'].map((label) => {
-            const checked = selectedCountries.includes(label)
-            return (
-              <div key={label} className="flex items-center space-x-2">
-                <Checkbox
-                  id={`country-${label}`}
-                  checked={checked}
-                  onCheckedChange={(val) => onToggleCountry(label)}
-                />
-                <label
-                  htmlFor={`country-${label}`}
-                  className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  {label}
-                </label>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <p className="text-xs font-medium text-muted-foreground">
-          Level of Study
-        </p>
-        <div className="space-y-1">
-          {['High School', 'Undergraduate', 'Graduate', 'PhD'].map((label) => {
-            const checked = selectedLevels.includes(label)
-            return (
-              <div key={label} className="flex items-center space-x-2">
-                <Checkbox
-                  id={`level-${label}`}
-                  checked={checked}
-                  onCheckedChange={() => onToggleLevel(label)}
-                />
-                <label
-                  htmlFor={`level-${label}`}
-                  className="text-xs font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-                >
-                  {label}
-                </label>
-              </div>
-            )
-          })}
-        </div>
-      </div>
-
-      <div className="space-y-2">
-        <label className="text-xs font-medium text-muted-foreground">
-          Fields of Study
-        </label>
-        <Input
-          placeholder="Search fields..."
-          className="h-9"
-          value={fieldQuery}
-          onChange={(e) => onFieldQuery(e.target.value)}
-        />
-      </div>
-
-      <div className="space-y-3">
-        <label className="text-xs font-medium text-muted-foreground">
-          Workload
-        </label>
-        <div className="flex flex-wrap gap-2">
-          {['All', 'Light', 'Medium', 'Heavy'].map((label) => (
-            <Badge
-              key={label}
-              variant={label === 'All' ? 'default' : 'outline'}
-              className="cursor-pointer"
-            >
-              {label}
-            </Badge>
-          ))}
-        </div>
-      </div>
-
-      <Separator />
-
-      <div className="space-y-3">
-        <div className="flex items-center space-x-2">
-          <Checkbox id="priority" disabled />
-          <label
-            htmlFor="priority"
-            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-          >
-            Priority matches only
-          </label>
-        </div>
-        <div className="flex items-center space-x-2">
-          <Checkbox
-            id="ineligible"
-            checked={hideIneligible}
-                  onCheckedChange={() => onToggleHideIneligible(Boolean(!hideIneligible))}
-          />
-          <label
-            htmlFor="ineligible"
-            className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70"
-          >
-            Hide ineligible
-          </label>
-        </div>
-      </div>
-
-      <Button variant="outline" className="w-full" size="sm">
-        Reset Filters
-      </Button>
-    </div>
-  )
-}
+export default MatchesPage

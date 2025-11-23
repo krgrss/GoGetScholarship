@@ -58,6 +58,13 @@ function CustomScholarshipLab() {
   const [reframeDraftA, setReframeDraftA] = React.useState('')
   const [reframeDraftB, setReframeDraftB] = React.useState('')
   const [reframeGrades, setReframeGrades] = React.useState<{ a: any; b: any } | null>(null)
+  const jsonHeaders = React.useCallback(
+    (): HeadersInit =>
+      adminKey
+        ? { 'Content-Type': 'application/json', 'admin-api-key': adminKey }
+        : { 'Content-Type': 'application/json' },
+    [adminKey],
+  )
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return
@@ -85,10 +92,7 @@ function CustomScholarshipLab() {
     try {
       const res = await fetch('/api/personality', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(adminKey ? { 'admin-api-key': adminKey } : {}),
-        },
+        headers: jsonHeaders(),
         body: JSON.stringify({
           scholarship_name: scholarshipName || 'Custom scholarship',
           raw_text: scholarshipText,
@@ -128,10 +132,7 @@ function CustomScholarshipLab() {
 
       const res = await fetch('/api/draft', {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(adminKey ? { 'admin-api-key': adminKey } : {}),
-        },
+        headers: jsonHeaders(),
         body: JSON.stringify({
           scholarship_name: scholarshipName || 'Custom scholarship',
           scholarship_text: scholarshipText,
@@ -167,10 +168,7 @@ function CustomScholarshipLab() {
   async function gradeSingle(text: string) {
     const res = await fetch('/api/grade-essay', {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(adminKey ? { 'admin-api-key': adminKey } : {}),
-      },
+      headers: jsonHeaders(),
       body: JSON.stringify({
         text,
         rubric,
@@ -210,7 +208,7 @@ function CustomScholarshipLab() {
       return
     }
     if (!storyText.trim()) {
-      setReframeError('Add 1–2 core stories.')
+      setReframeError('Add 1-2 core stories.')
       return
     }
     setReframeError(null)
@@ -233,12 +231,10 @@ function CustomScholarshipLab() {
           (localStorage.getItem('scholarship_student_id') ||
             localStorage.getItem('student_id'))) ||
         undefined
-      const adminHeaders = adminKey ? { 'admin-api-key': adminKey } : {}
-
       const draftReq = async (style: string) => {
         const res = await fetch('/api/draft', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json', ...adminHeaders },
+          headers: jsonHeaders(),
           body: JSON.stringify({
             scholarship_name: scholarshipName || 'Custom scholarship',
             scholarship_text: scholarshipText,

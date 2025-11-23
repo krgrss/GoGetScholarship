@@ -85,7 +85,7 @@ async function runTests() {
       body: JSON.stringify(testProfile)
     })
     
-    const data = await res.json()
+    const data: any = await res.json()
     logTest('Profile API responds', res.ok, `Status: ${res.status}`)
     logTest('Returns student_id', !!data.student_id, data.student_id ? `ID: ${data.student_id.slice(0, 8)}...` : '')
     
@@ -121,7 +121,7 @@ async function runTests() {
       })
     })
     
-    const data = await res.json()
+    const data: any = await res.json()
     logTest('Matches API responds', res.ok, `Status: ${res.status}`)
     logTest('Returns scholarship matches', Array.isArray(data.rows) && data.rows.length > 0, 
       `Count: ${data.rows?.length || 0}`)
@@ -144,7 +144,7 @@ async function runTests() {
     if (rubric.rows.length > 0) {
       const scholarshipId = rubric.rows[0].scholarship_id
       const res = await fetch(`${BASE_URL}/api/rubric?scholarship_id=${scholarshipId}`)
-      const data = await res.json()
+      const data: any = await res.json()
       
       logTest('Rubric API responds', res.ok, `Status: ${res.status}`)
       logTest('Returns rubric data', !!data.rubric, 

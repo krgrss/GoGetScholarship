@@ -57,7 +57,25 @@ export const Route = createFileRoute('/api/scholarship/$id')({
                 s.metadata,
                 p.weights,
                 p.themes,
-                p.tone
+                p.tone,
+                (
+                  select coalesce(
+                    json_agg(
+                      json_build_object(
+                        'winner_name', w.winner_name,
+                        'year', w.year,
+                        'story_excerpt', w.story_excerpt,
+                        'themes', w.themes,
+                        'angle', w.angle,
+                        'source_url', w.source_url
+                      )
+                      order by coalesce(w.year, 0) desc, w.created_at desc
+                    ),
+                    '[]'::json
+                  )
+                  from scholarship_winners w
+                  where w.scholarship_id = s.id
+                ) as winners
               from scholarships s
               left join scholarship_profiles p
                 on p.scholarship_id = s.id
@@ -90,6 +108,7 @@ export const Route = createFileRoute('/api/scholarship/$id')({
             country: row.country as string | null,
             fields: (row.fields as string[] | null) ?? null,
             metadata: row.metadata,
+            winners: Array.isArray(row.winners) ? (row.winners as any[]) : [],
           }
 
           const personality =

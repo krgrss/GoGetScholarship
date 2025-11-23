@@ -1,32 +1,37 @@
 import { createFileRoute, Link } from '@tanstack/react-router'
-import {
-  AlertCircle,
-  ArrowRight,
-  CheckCircle2,
-  Clock,
-  FileText,
-  Plus,
-  Sparkles,
-  TrendingUp,
-} from 'lucide-react'
 import * as React from 'react'
 
-import { Badge } from '@/components/ui/badge'
+import TodayPlan, { TodayTask } from '@/components/dashboard/TodayPlan'
+import CycleSummary, { CycleSummaryData } from '@/components/dashboard/CycleSummary'
+import SmartPlannerTimeline, { PlannerWeek } from '@/components/dashboard/SmartPlannerTimeline'
+import ApplicationsPipeline, { ApplicationRow } from '@/components/dashboard/ApplicationsPipeline'
+import ReuseSuggestions, { ReuseSuggestion } from '@/components/dashboard/ReuseSuggestions'
+import WeeklyInsight, { WeeklyInsightData } from '@/components/dashboard/WeeklyInsight'
+import { AlertCircle, Plus } from 'lucide-react'
+import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Progress } from '@/components/ui/progress'
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table'
 
 export const Route = createFileRoute('/dashboard')({
   component: DashboardPage,
 })
+
+type DashboardApplication = {
+  id: string
+  draftId: string
+  name: string
+  provider: string
+  deadline: string
+  deadlineIso?: string | null
+  status: string
+  progress: number
+  readiness: 'needs_work' | 'solid' | 'ready'
+  nextAction: string
+  workloadLabel?: 'Light' | 'Medium' | 'Heavy'
+  workloadItems?: string[]
+  completed_tasks?: number
+  total_tasks?: number
+  amountMax?: number
+}
 
 type DashboardKpi = {
   total: number
@@ -35,32 +40,27 @@ type DashboardKpi = {
   potentialValue: string
 }
 
-type DashboardApplication = {
-  id: string
-  draftId: string
-  name: string
-  provider: string
-  deadline: string
-  status: string
-  progress: number
-  readiness: 'needs_work' | 'solid' | 'ready'
-  nextAction: string
-  workloadLabel?: 'Light' | 'Medium' | 'Heavy'
-  workloadItems?: string[]
+type DashboardResponse = {
+  kpi: DashboardKpi
+  applications: DashboardApplication[]
 }
 
-const STUDENT_UUID = /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+function daysUntil(dateIso?: string | null) {
+  if (!dateIso) return null
+  const target = new Date(dateIso)
+  if (Number.isNaN(target.getTime())) return null
+  const diff = target.getTime() - Date.now()
+  return Math.ceil(diff / (1000 * 60 * 60 * 24))
+}
 
 function DashboardPage() {
-  const [kpi, setKpi] = React.useState<DashboardKpi | null>(null)
-  const [applications, setApplications] = React.useState<DashboardApplication[]>([])
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
+  const [data, setData] = React.useState<DashboardResponse | null>(null)
 
   React.useEffect(() => {
     if (typeof window === 'undefined') return
-
-    async function load() {
+    const load = async () => {
       setLoading(true)
       setError(null)
       try {
@@ -69,51 +69,202 @@ function DashboardPage() {
           localStorage.getItem('student_id') ||
           ''
         const studentId = rawId.trim()
-
-        if (!studentId || !STUDENT_UUID.test(studentId)) {
-          setError('Load a saved student ID first (via Admin > Debug) before viewing the dashboard.')
+        const uuidRegex =
+          /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$/
+        if (!studentId || !uuidRegex.test(studentId)) {
+          setError('Load a saved student ID first (via Profile/Onboarding) before viewing the dashboard.')
           return
         }
 
         const res = await fetch(`/api/dashboard?student_id=${encodeURIComponent(studentId)}`)
         const json = await res.json()
-        if (!res.ok || !json.ok) {
-          throw new Error(json?.error || `Dashboard request failed (${res.status})`)
-        }
-
-        setKpi(json.kpi as DashboardKpi)
-        setApplications((json.applications ?? []) as DashboardApplication[])
+        if (!res.ok || !json.ok) throw new Error(json?.error || 'Failed to load dashboard')
+        setData(json as DashboardResponse)
       } catch (e: any) {
-        setError(String(e?.message || e))
+        setError(String(e.message || e))
       } finally {
         setLoading(false)
       }
     }
-
     void load()
   }, [])
 
-  const suggestions = React.useMemo(() => {
-    if (!applications.length) return [] as { id: string; text: string; href: string }[]
-    const candidates = applications
-      .filter((a) => a.status.toLowerCase().includes('progress') && a.readiness !== 'ready')
-      .sort((a, b) => (a.workloadLabel === 'Light' ? -1 : 0) - (b.workloadLabel === 'Light' ? -1 : 0))
+  const applications = data?.applications ?? []
+
+  const todayTasks: TodayTask[] = React.useMemo(() => {
+    return applications
+      .map((app, idx) => {
+        const dueInDays = daysUntil(app.deadlineIso)
+        const stageLabel = app.status
+        return {
+          id: app.draftId || app.id || String(idx),
+          scholarshipId: app.id,
+          scholarshipName: app.name,
+          dueDate: app.deadlineIso || '',
+          dueInDays: dueInDays ?? 30 + idx,
+          taskLabel: app.nextAction,
+          durationMinutes: app.workloadLabel === 'Light' ? 20 : app.workloadLabel === 'Heavy' ? 45 : 30,
+          aiRank: idx + 1,
+          plannerHref: `/scholarship/${app.id}`,
+          stage: stageLabel,
+        }
+      })
+      .sort((a, b) => a.dueInDays - b.dueInDays)
       .slice(0, 3)
-    return candidates.map((app) => ({
-      id: app.id,
-      text: `Low effort: ${app.name}`,
-      href: `/scholarship/${app.id}`,
-    }))
+  }, [applications])
+
+  const cycleSummary: CycleSummaryData | null = React.useMemo(() => {
+    if (!applications.length || !data?.kpi) return null
+    const active = applications.filter((a) => a.progress < 100)
+    const dueThisWeek = active.filter((a) => {
+      const d = daysUntil(a.deadlineIso)
+      return d != null && d <= 7
+    }).length
+    const deadlines30 = active.filter((a) => {
+      const d = daysUntil(a.deadlineIso)
+      return d != null && d <= 30
+    }).length
+    const highValue30 = active.filter((a) => {
+      const d = daysUntil(a.deadlineIso)
+      return d != null && d <= 30 && (a.amountMax ?? 0) >= 5000
+    }).length
+    const draftsNearlyReady = applications.filter((a) => a.progress >= 60 && a.progress < 100).length
+    return {
+      activeApplications: active.length,
+      activeDueThisWeek: dueThisWeek,
+      deadlinesNext30Days: deadlines30,
+      highValueDeadlinesNext30Days: highValue30,
+      potentialValueActive: data.kpi.potentialValue,
+      draftsInProgress: active.length,
+      draftsNearlyReady,
+    }
+  }, [applications, data?.kpi])
+
+  const weeks: PlannerWeek[] = React.useMemo(() => {
+    const now = new Date()
+    const startOfWeek = (offsetWeeks: number) => {
+      const d = new Date(now)
+      const day = d.getDay()
+      const diff = d.getDate() - day + (day === 0 ? -6 : 1) + offsetWeeks * 7
+      d.setDate(diff)
+      d.setHours(0, 0, 0, 0)
+      return d
+    }
+    const weekLabels = ['This week', 'Next week', 'Week after']
+    return weekLabels.map((label, idx) => {
+      const start = startOfWeek(idx)
+      const end = new Date(start)
+      end.setDate(start.getDate() + 6)
+      const tasks = applications.slice(0, 4).map((app, i) => {
+        const cat: 'essay' | 'documents' | 'shortAnswer' =
+          app.workloadItems?.some((w) => w.toLowerCase().includes('transcript') || w.toLowerCase().includes('rec'))
+            ? 'documents'
+            : app.workloadItems?.some((w) => w.toLowerCase().includes('short') || w.toLowerCase().includes('answer'))
+              ? 'shortAnswer'
+              : 'essay'
+        return {
+          id: `${app.id}-${idx}-${i}`,
+          scholarshipId: app.id,
+          scholarshipName: app.name,
+          taskLabel: app.nextAction || 'Keep progressing',
+          durationMinutes: app.workloadLabel === 'Light' ? 20 : app.workloadLabel === 'Heavy' ? 45 : 30,
+          category: cat,
+          plannerHref: `/scholarship/${app.id}`,
+        }
+      })
+      return {
+        weekLabel: label,
+        startDate: start.toISOString(),
+        endDate: end.toISOString(),
+        tasks,
+      }
+    })
+  }, [applications])
+
+  const pipelineRows: ApplicationRow[] = React.useMemo(() => {
+    return applications
+      .map((app) => {
+        const dueInDays = daysUntil(app.deadlineIso)
+        const stage =
+          app.progress >= 100
+            ? 'submitted'
+            : app.progress >= 70
+              ? 'revising'
+              : app.progress >= 30
+                ? 'drafting'
+                : app.total_tasks && app.total_tasks > 0
+                  ? 'planning'
+                  : 'not_started'
+        return {
+          id: app.id,
+          scholarshipId: app.id,
+          scholarshipName: app.name,
+          isHighValue: (app.amountMax ?? 0) >= 5000,
+          stage: stage as ApplicationRow['stage'],
+          readinessPercent: app.progress,
+          dueDate: app.deadlineIso || '',
+          dueInDays: dueInDays ?? 999,
+          primaryActionLabel:
+            stage === 'submitted'
+              ? 'View'
+              : stage === 'revising'
+                ? 'Revise draft'
+                : stage === 'drafting'
+                  ? 'Continue draft'
+                  : stage === 'planning'
+                    ? 'Open plan'
+                    : 'Start planning',
+          primaryActionHref: `/scholarship/${app.id}`,
+        }
+      })
+      .sort((a, b) => a.dueInDays - b.dueInDays)
+  }, [applications])
+
+  const reuseSuggestions: ReuseSuggestion[] = React.useMemo(() => {
+    return applications
+      .filter((a) => a.workloadLabel === 'Light' && a.progress >= 20 && a.progress < 100)
+      .slice(0, 3)
+      .map((a) => ({
+        id: a.id,
+        scholarshipId: a.id,
+        scholarshipName: a.name,
+        baseEssayId: a.draftId,
+        baseEssayName: 'Current draft',
+        extraWorkEstimateMinutes: 15,
+        plannerHref: `/scholarship/${a.id}`,
+      }))
+  }, [applications])
+
+  const weeklyInsight: WeeklyInsightData | null = React.useMemo(() => {
+    if (!applications.length) return null
+    const drafts60 = applications.filter((a) => a.progress >= 60 && a.progress < 100).length
+    const urgent = applications.filter((a) => {
+      const d = daysUntil(a.deadlineIso)
+      return d != null && d <= 3
+    }).length
+    const highValue = applications.filter((a) => (a.amountMax ?? 0) >= 5000).length
+    return {
+      title: 'Coach’s Weekly Insight',
+      bullets: [
+        `You have ${drafts60 || 'no'} drafts between 60–99% readiness; polishing them unlocks fast wins.`,
+        urgent
+          ? `${urgent} deadline${urgent > 1 ? 's' : ''} within 3 days—tackle those first.`
+          : 'No ultra-urgent deadlines; focus on readiness and reuse.',
+        highValue
+          ? `${highValue} high-value scholarships in your pipeline; prioritize their plan tasks.`
+          : 'Focus on strongest-fit scholarships and keep reuse in mind.',
+      ],
+    }
   }, [applications])
 
   return (
     <div className="flex min-h-[calc(100vh-4rem)] flex-col bg-muted/10 pb-12">
-      <div className="mx-auto w-full max-w-6xl px-4 py-8">
-        <div className="mb-8 flex items-center justify-between">
+      <div className="mx-auto w-full max-w-6xl px-4 py-8 space-y-6">
+        <div className="flex items-center justify-between">
           <div>
             <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
             <p className="text-muted-foreground">
-              Track your applications, readiness, and next steps.
+              Today’s game plan, Smart Planner, and AI insights in one place.
             </p>
           </div>
           <div className="flex items-center gap-2">
@@ -127,7 +278,7 @@ function DashboardPage() {
         </div>
 
         {error && (
-          <Card className="mb-6 border-destructive/30 bg-destructive/5">
+          <Card className="border-destructive/30 bg-destructive/5">
             <CardContent className="flex items-center gap-2 py-4 text-sm text-destructive">
               <AlertCircle className="h-4 w-4" />
               <span>{error}</span>
@@ -135,189 +286,24 @@ function DashboardPage() {
           </Card>
         )}
 
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          {kpi
-            ? [
-                {
-                  title: 'Total Applications',
-                  value: String(kpi.total),
-                  icon: FileText,
-                },
-                {
-                  title: 'In Progress',
-                  value: String(kpi.inProgress),
-                  icon: Clock,
-                },
-                {
-                  title: 'Completed',
-                  value: String(kpi.completed),
-                  icon: CheckCircle2,
-                },
-                {
-                  title: 'Potential Value',
-                  value: kpi.potentialValue,
-                  icon: TrendingUp,
-                },
-              ].map((item) => (
-                <Card key={item.title}>
-                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                    <CardTitle className="text-sm font-medium">{item.title}</CardTitle>
-                    <item.icon className="h-4 w-4 text-muted-foreground" />
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{item.value}</div>
-                  </CardContent>
-                </Card>
-              ))
-            : Array.from({ length: 4 }).map((_, idx) => (
-                <Card key={idx}>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium text-muted-foreground">Loading…</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-6 w-24 animate-pulse rounded bg-muted" />
-                  </CardContent>
-                </Card>
-              ))}
-        </div>
-
-        <div className="mt-8 grid gap-8 lg:grid-cols-[2fr_1fr]">
-          <div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Your Applications</CardTitle>
-                <CardDescription>
-                  Essays and drafts you've started. Progress updates as you write.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {loading ? (
-                  <p className="text-sm text-muted-foreground">Loading…</p>
-                ) : applications.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    No applications yet. Start from Matches to create your first draft.
-                  </p>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Scholarship</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Progress</TableHead>
-                        <TableHead>Readiness</TableHead>
-                        <TableHead>Workload</TableHead>
-                        <TableHead>Next Action</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {applications.map((app) => (
-                        <TableRow key={app.draftId || app.id}>
-                          <TableCell>
-                            <div className="space-y-1">
-                              <div className="font-medium">{app.name}</div>
-                              <div className="text-xs text-muted-foreground">
-                                {app.provider} • {app.deadline}
-                              </div>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge variant="secondary" className="font-normal">
-                              {app.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Progress value={app.progress} className="h-2 w-24" />
-                              <span className="text-xs text-muted-foreground">{app.progress}%</span>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={
-                                app.readiness === 'ready'
-                                  ? 'default'
-                                  : app.readiness === 'solid'
-                                    ? 'secondary'
-                                    : 'outline'
-                              }
-                            >
-                              {app.readiness}
-                            </Badge>
-                          </TableCell>
-                          <TableCell>
-                            {app.workloadLabel ? (
-                              <Badge variant="outline" className="font-normal">
-                                {app.workloadLabel}
-                              </Badge>
-                            ) : (
-                              <span className="text-[11px] text-muted-foreground">n/a</span>
-                            )}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs text-muted-foreground">{app.nextAction}</span>
-                              <Button asChild variant="ghost" size="icon" className="h-8 w-8">
-                                <Link
-                                  to="/scholarship/$id"
-                                  params={{ id: app.id }}
-                                  search={{ score: undefined, eligibility: undefined }}
-                                >
-                                  <ArrowRight className="h-4 w-4" />
-                                </Link>
-                              </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
-            </Card>
+        <section className="grid gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <TodayPlan tasks={todayTasks} loading={loading} />
           </div>
+          <CycleSummary data={cycleSummary} loading={loading} />
+        </section>
 
-          <div className="space-y-4">
-            <Card>
-              <CardHeader>
-                <CardTitle>Suggestions</CardTitle>
-                <CardDescription>
-                  Low extra work scholarships based on drafts you've started.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {suggestions.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">No suggestions yet.</p>
-                ) : (
-                  suggestions.map((s) => (
-                    <div key={s.id} className="rounded-md border p-3">
-                      <div className="flex items-center justify-between gap-2">
-                        <p className="text-sm font-medium">{s.text}</p>
-                        <Badge variant="secondary" className="font-normal">
-                          Low effort
-                        </Badge>
-                      </div>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="mt-2 h-8 gap-1 text-xs"
-                        asChild
-                      >
-                        <Link
-                          to="/scholarship/$id"
-                          params={{ id: s.id }}
-                          search={{ score: undefined, eligibility: undefined }}
-                        >
-                          Open
-                          <Sparkles className="h-3 w-3" />
-                        </Link>
-                      </Button>
-                    </div>
-                  ))
-                )}
-              </CardContent>
-            </Card>
+        <SmartPlannerTimeline weeks={weeks} />
+
+        <section className="grid gap-4 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <ApplicationsPipeline rows={pipelineRows} loading={loading} />
           </div>
-        </div>
+          <div className="space-y-4">
+            <ReuseSuggestions suggestions={reuseSuggestions} />
+            <WeeklyInsight insight={weeklyInsight} />
+          </div>
+        </section>
       </div>
     </div>
   )

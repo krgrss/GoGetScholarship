@@ -36,6 +36,9 @@ import { Route as ApiDashboardRouteImport } from './routes/api/dashboard'
 import { Route as ApiClaudeHealthRouteImport } from './routes/api/claude-health'
 import { Route as AdminDebugRouteImport } from './routes/admin/debug'
 import { Route as ApiScholarshipIdRouteImport } from './routes/api/scholarship/$id'
+import { Route as ApiEssayTransformRouteImport } from './routes/api/essay/transform'
+import { Route as ApiEssayIdeasRouteImport } from './routes/api/essay/ideas'
+import { Route as ApiEssayCoachRouteImport } from './routes/api/essay/coach'
 import { Route as ApiAuthMeRouteImport } from './routes/api/auth/me'
 import { Route as ApiAuthLoginRouteImport } from './routes/api/auth/login'
 import { Route as ApiAdminTelemetryRouteImport } from './routes/api/admin/telemetry'
@@ -176,6 +179,21 @@ const ApiScholarshipIdRoute = ApiScholarshipIdRouteImport.update({
   path: '/api/scholarship/$id',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiEssayTransformRoute = ApiEssayTransformRouteImport.update({
+  id: '/api/essay/transform',
+  path: '/api/essay/transform',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiEssayIdeasRoute = ApiEssayIdeasRouteImport.update({
+  id: '/api/essay/ideas',
+  path: '/api/essay/ideas',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ApiEssayCoachRoute = ApiEssayCoachRouteImport.update({
+  id: '/api/essay/coach',
+  path: '/api/essay/coach',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiAuthMeRoute = ApiAuthMeRouteImport.update({
   id: '/api/auth/me',
   path: '/api/auth/me',
@@ -228,6 +246,9 @@ export interface FileRoutesByFullPath {
   '/api/admin/telemetry': typeof ApiAdminTelemetryRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/me': typeof ApiAuthMeRoute
+  '/api/essay/coach': typeof ApiEssayCoachRoute
+  '/api/essay/ideas': typeof ApiEssayIdeasRoute
+  '/api/essay/transform': typeof ApiEssayTransformRoute
   '/api/scholarship/$id': typeof ApiScholarshipIdRoute
 }
 export interface FileRoutesByTo {
@@ -261,6 +282,9 @@ export interface FileRoutesByTo {
   '/api/admin/telemetry': typeof ApiAdminTelemetryRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/me': typeof ApiAuthMeRoute
+  '/api/essay/coach': typeof ApiEssayCoachRoute
+  '/api/essay/ideas': typeof ApiEssayIdeasRoute
+  '/api/essay/transform': typeof ApiEssayTransformRoute
   '/api/scholarship/$id': typeof ApiScholarshipIdRoute
 }
 export interface FileRoutesById {
@@ -295,6 +319,9 @@ export interface FileRoutesById {
   '/api/admin/telemetry': typeof ApiAdminTelemetryRoute
   '/api/auth/login': typeof ApiAuthLoginRoute
   '/api/auth/me': typeof ApiAuthMeRoute
+  '/api/essay/coach': typeof ApiEssayCoachRoute
+  '/api/essay/ideas': typeof ApiEssayIdeasRoute
+  '/api/essay/transform': typeof ApiEssayTransformRoute
   '/api/scholarship/$id': typeof ApiScholarshipIdRoute
 }
 export interface FileRouteTypes {
@@ -330,6 +357,9 @@ export interface FileRouteTypes {
     | '/api/admin/telemetry'
     | '/api/auth/login'
     | '/api/auth/me'
+    | '/api/essay/coach'
+    | '/api/essay/ideas'
+    | '/api/essay/transform'
     | '/api/scholarship/$id'
   fileRoutesByTo: FileRoutesByTo
   to:
@@ -363,6 +393,9 @@ export interface FileRouteTypes {
     | '/api/admin/telemetry'
     | '/api/auth/login'
     | '/api/auth/me'
+    | '/api/essay/coach'
+    | '/api/essay/ideas'
+    | '/api/essay/transform'
     | '/api/scholarship/$id'
   id:
     | '__root__'
@@ -396,6 +429,9 @@ export interface FileRouteTypes {
     | '/api/admin/telemetry'
     | '/api/auth/login'
     | '/api/auth/me'
+    | '/api/essay/coach'
+    | '/api/essay/ideas'
+    | '/api/essay/transform'
     | '/api/scholarship/$id'
   fileRoutesById: FileRoutesById
 }
@@ -430,6 +466,9 @@ export interface RootRouteChildren {
   ApiAdminTelemetryRoute: typeof ApiAdminTelemetryRoute
   ApiAuthLoginRoute: typeof ApiAuthLoginRoute
   ApiAuthMeRoute: typeof ApiAuthMeRoute
+  ApiEssayCoachRoute: typeof ApiEssayCoachRoute
+  ApiEssayIdeasRoute: typeof ApiEssayIdeasRoute
+  ApiEssayTransformRoute: typeof ApiEssayTransformRoute
   ApiScholarshipIdRoute: typeof ApiScholarshipIdRoute
 }
 
@@ -624,6 +663,27 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ApiScholarshipIdRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/essay/transform': {
+      id: '/api/essay/transform'
+      path: '/api/essay/transform'
+      fullPath: '/api/essay/transform'
+      preLoaderRoute: typeof ApiEssayTransformRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/essay/ideas': {
+      id: '/api/essay/ideas'
+      path: '/api/essay/ideas'
+      fullPath: '/api/essay/ideas'
+      preLoaderRoute: typeof ApiEssayIdeasRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/essay/coach': {
+      id: '/api/essay/coach'
+      path: '/api/essay/coach'
+      fullPath: '/api/essay/coach'
+      preLoaderRoute: typeof ApiEssayCoachRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/api/auth/me': {
       id: '/api/auth/me'
       path: '/api/auth/me'
@@ -686,6 +746,9 @@ const rootRouteChildren: RootRouteChildren = {
   ApiAdminTelemetryRoute: ApiAdminTelemetryRoute,
   ApiAuthLoginRoute: ApiAuthLoginRoute,
   ApiAuthMeRoute: ApiAuthMeRoute,
+  ApiEssayCoachRoute: ApiEssayCoachRoute,
+  ApiEssayIdeasRoute: ApiEssayIdeasRoute,
+  ApiEssayTransformRoute: ApiEssayTransformRoute,
   ApiScholarshipIdRoute: ApiScholarshipIdRoute,
 }
 export const routeTree = rootRouteImport

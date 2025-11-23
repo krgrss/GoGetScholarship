@@ -152,11 +152,15 @@ export const Route = createFileRoute('/api/dashboard')({
 
             const deadlineRaw = meta.deadline as string | undefined
             let deadlineLabel = 'No deadline'
+            let deadlineIso: string | null = null
             if (deadlineRaw) {
               const d = new Date(deadlineRaw)
-              deadlineLabel = Number.isNaN(d.getTime())
-                ? deadlineRaw
-                : d.toLocaleDateString()
+              if (!Number.isNaN(d.getTime())) {
+                deadlineIso = d.toISOString()
+                deadlineLabel = d.toLocaleDateString()
+              } else {
+                deadlineLabel = deadlineRaw
+              }
             }
 
             const provider =
@@ -175,6 +179,7 @@ export const Route = createFileRoute('/api/dashboard')({
               name: r.scholarship_name,
               provider,
               deadline: deadlineLabel,
+              deadlineIso,
               status: isSubmitted
                 ? 'Submitted'
                 : hasTasks
@@ -193,6 +198,7 @@ export const Route = createFileRoute('/api/dashboard')({
                   : 'Continue Drafting',
               workloadLabel: workload.label,
               workloadItems: workload.items,
+              amountMax: Number(meta.amount_max ?? meta.amount_min ?? 0) || 0,
             }
           })
 

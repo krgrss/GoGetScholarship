@@ -8,7 +8,6 @@ import {
   ExternalLink,
   FileText,
   GraduationCap,
-  Lightbulb,
   Mic,
   Sparkles,
   ListTodo,
@@ -23,7 +22,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
@@ -34,7 +32,6 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import {
   Tooltip,
@@ -77,6 +74,7 @@ type ApiScholarship = {
   country: string | null
   fields: string[] | null
   metadata: any
+  winners?: WinnerStory[]
 }
 
 type ApiPersonality = {
@@ -100,6 +98,15 @@ type WinnerPatterns = {
   winner_profile: string
 } | null
 
+type WinnerStory = {
+  winner_name?: string | null
+  year?: number | null
+  story_excerpt?: string | null
+  themes?: string[] | null
+  angle?: string | null
+  source_url?: string | null
+}
+
 type ScholarshipView = {
   id: string
   name: string
@@ -117,6 +124,7 @@ type ScholarshipView = {
   personalityThemes: string[]
   personalityTone: string | null
   winnerPatterns: WinnerPatterns
+  winners: WinnerStory[]
   url: string | null
   academicSummary: string
   geographicSummary: string
@@ -132,6 +140,11 @@ type PlanTask = {
 
 function normalizeValue(value?: string | null) {
   return value ? value.trim().toLowerCase() : ''
+}
+
+function formatLabel(text?: string | null) {
+  if (!text) return ''
+  return String(text).replace(/_/g, ' ')
 }
 
 function normalizeCountry(value?: string | null) {
@@ -225,6 +238,7 @@ export function ScholarshipDetailPage() {
   const [data, setData] = React.useState<{
     scholarship: ApiScholarship
     personality: ApiPersonality
+    winners: WinnerStory[]
   } | null>(null)
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -271,9 +285,9 @@ export function ScholarshipDetailPage() {
       criteria: { id: string; name: string; score: number; max: number; feedback: string }[]
     }
   }>({})
+  const [strategyStory, setStrategyStory] = React.useState('')
   const [sourcesOpen, setSourcesOpen] = React.useState(false)
   const [eligibilityInfoOpen, setEligibilityInfoOpen] = React.useState(false)
-  const [profileJsonOpen, setProfileJsonOpen] = React.useState(false)
   const [profileJson, setProfileJson] = React.useState<any | null>(null)
 
   const [profileAvailable, setProfileAvailable] = React.useState(false)
@@ -306,12 +320,12 @@ export function ScholarshipDetailPage() {
     reviseLoading
 
   const aiStatus = React.useMemo(() => {
-    if (draftLoading) return 'Drafting with AI…'
-    if (gradeLoading) return 'Grading against rubric…'
-    if (compareLoading) return 'Comparing essays…'
-    if (explainFitLoading) return 'Analyzing fit…'
-    if (planLoading) return 'Building plan…'
-    if (reviseLoading) return 'Revising by criterion…'
+    if (draftLoading) return 'Drafting with AI...'
+    if (gradeLoading) return 'Grading against rubric...'
+    if (compareLoading) return 'Comparing essays...'
+    if (explainFitLoading) return 'Analyzing fit...'
+    if (planLoading) return 'Building plan...'
+    if (reviseLoading) return 'Revising by criterion...'
     return ''
   }, [draftLoading, gradeLoading, compareLoading, explainFitLoading, planLoading, reviseLoading])
 
@@ -345,31 +359,31 @@ export function ScholarshipDetailPage() {
           label: 'Profile',
           status: profileAvailable ? 'done' : 'available',
           hint: 'Loaded from /api/profile via studentId.',
-          anchor: '#profile',
+          anchor: '#profile-match',
         },
         {
           label: 'Match',
           status: 'done',
           hint: 'Ranked via /api/match + /api/rerank with embeddings.',
-          anchor: '#match',
+          anchor: '#profile-match',
         },
         {
           label: 'Personality',
           status: data?.personality ? 'done' : 'available',
           hint: 'Personality profile cached from /api/personality.',
-          anchor: '#personality',
+          anchor: '#strategy-step',
         },
         {
           label: 'Draft',
           status: essayText ? 'done' : 'available',
           hint: 'Essay workspace connected to /api/draft.',
-          anchor: '#essay-workspace',
+          anchor: '#draft-step',
         },
         {
           label: 'Grade',
           status: gradeResult ? 'done' : 'available',
           hint: 'Rubric grading from /api/grade-essay.',
-          anchor: '#grade',
+          anchor: '#grade-step',
         },
       ] as { label: string; status: 'done' | 'available'; hint: string; anchor: string }[],
     [data?.personality, essayText, gradeResult, profileAvailable],
@@ -592,6 +606,8 @@ export function ScholarshipDetailPage() {
         ? `Demographic: ${demographicRaw.join(', ')}`
         : 'Demographic: Optional / not required'
 
+    const winners: WinnerStory[] = Array.isArray(data?.winners) ? data.winners : []
+
     return {
       id: scholarship.id,
       name: scholarship.name,
@@ -609,6 +625,7 @@ export function ScholarshipDetailPage() {
       personalityThemes: (personality?.themes as string[]) ?? [],
       personalityTone: personality?.tone ?? null,
       winnerPatterns,
+      winners,
       url: scholarship.url,
       academicSummary,
       geographicSummary,
@@ -648,6 +665,7 @@ export function ScholarshipDetailPage() {
         setData({
           scholarship: json.scholarship as ApiScholarship,
           personality: (json.personality ?? null) as ApiPersonality,
+          winners: Array.isArray(json.scholarship?.winners) ? (json.scholarship.winners as WinnerStory[]) : [],
         })
       } catch (e: any) {
         if (cancelled) return
@@ -778,7 +796,12 @@ export function ScholarshipDetailPage() {
       const tasks: PlanTask[] = (json.tasks ?? []) as PlanTask[]
       setPlanTasks(tasks)
     } catch (e: any) {
-      setPlanError(String(e.message || e))
+      const msg = String(e.message || e)
+      setPlanError(msg)
+      // Fall back to local planner seeds so the UI still works when the DB schema is missing.
+      if (!planTasks.length && localTasks.length === 0) {
+        resetLocalTasks()
+      }
     } finally {
       setPlanLoading(false)
     }
@@ -1022,34 +1045,6 @@ export function ScholarshipDetailPage() {
     }
   }
 
-  const handlePlan = async () => {
-    if (!scholarship) return
-    setPlanLoading(true)
-    setPlanError(null)
-    try {
-      const studentId =
-        localStorage.getItem('scholarship_student_id') || localStorage.getItem('student_id')
-      if (!studentId) throw new Error('No student ID found')
-
-      const res = await fetch('/api/plan', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          student_id: studentId,
-          scholarship_id: scholarship.id,
-        }),
-      })
-      const json = await res.json()
-      if (!res.ok || !json.ok) throw new Error(json.error || 'Failed to create plan')
-
-      setPlanTasks(json.tasks || [])
-    } catch (e: any) {
-      setPlanError(e.message || 'Failed to generate plan')
-    } finally {
-      setPlanLoading(false)
-    }
-  }
-
   const tasksToShow = planTasks.length ? planTasks : localTasks
   const tasksAreLocal = planTasks.length === 0
   const timelineSteps = [
@@ -1059,6 +1054,56 @@ export function ScholarshipDetailPage() {
     { label: 'Revise weak criteria', done: !!revisedText },
     { label: 'Check Low extra work options', done: scholarship?.workloadLabel === 'Light' },
   ]
+
+  const workspaceSteps = React.useMemo(
+    () => [
+      {
+        label: 'Strategy',
+        anchor: '#strategy-step',
+        status: data?.personality ? 'done' : 'pending',
+        hint: 'Winning plan & priorities',
+      },
+      {
+        label: 'Draft',
+        anchor: '#draft-step',
+        status: essayText ? 'done' : 'pending',
+        hint: 'Essay workspace',
+      },
+      {
+        label: 'Grade',
+        anchor: '#grade-step',
+        status: gradeResult ? 'done' : 'pending',
+        hint: 'Rubric grading & revision',
+      },
+      {
+        label: 'Plan',
+        anchor: '#plan-step',
+        status: tasksToShow.length ? 'done' : 'pending',
+        hint: 'Tasks & dashboard',
+      },
+    ],
+    [data?.personality, essayText, gradeResult, tasksToShow.length],
+  )
+  const [activeWorkspaceStep, setActiveWorkspaceStep] = React.useState(0)
+
+  const scrollToAnchor = React.useCallback((anchor: string) => {
+    if (typeof document === 'undefined') return
+    const idx = workspaceSteps.findIndex((s) => s.anchor === anchor)
+    if (idx >= 0) setActiveWorkspaceStep(idx)
+    const el = document.querySelector(anchor)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }
+  }, [workspaceSteps])
+
+  const handleSendStoryToDraft = React.useCallback(() => {
+    if (strategyStory.trim()) {
+      setEssayText((prev) =>
+        prev.trim() ? `${strategyStory.trim()}\n\n${prev}` : strategyStory.trim(),
+      )
+    }
+    scrollToAnchor('#draft-step')
+  }, [strategyStory, scrollToAnchor])
 
 
   if (loading && !scholarship) {
@@ -1139,419 +1184,639 @@ export function ScholarshipDetailPage() {
     )
   }
 
-
-
-
   return (
     <div className="min-h-[calc(100vh-4rem)] bg-background pb-12">
-      <div className="mx-auto max-w-6xl px-4 py-6">
+      <div className="mx-auto max-w-6xl px-4 py-6 space-y-6">
         <Link
           to="/matches"
-          className="mb-6 inline-flex items-center text-sm font-medium text-muted-foreground hover:text-foreground"
+          className="inline-flex items-center text-sm font-medium text-muted-foreground hover:text-foreground"
         >
           <ArrowLeft className="mr-1 h-4 w-4" />
           Back to Matches
         </Link>
 
         {error && (
-          <div className="mb-4 rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
+          <div className="rounded-md border border-destructive/40 bg-destructive/10 px-3 py-2 text-xs text-destructive">
             {error}
           </div>
         )}
 
-        <div className="grid gap-8 lg:grid-cols-[minmax(0,2fr)_minmax(300px,1fr)]">
-          {/* Left Column */}
-          <div className="space-y-8">
-            <div>
+        <header className="space-y-3">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div className="space-y-2">
               <h1 className="font-display text-3xl font-bold leading-tight sm:text-4xl">
-                {scholarship?.name ?? (loading ? 'Loading scholarship…' : 'Scholarship')}
+                {scholarship?.name ?? (loading ? 'Loading scholarship...' : 'Scholarship')}
               </h1>
-              <div className="mt-2 flex flex-wrap items-center gap-3">
-                <p className="text-lg text-muted-foreground">
-                  {scholarship?.provider}
-                </p>
-
-              </div>
-
-              <TooltipProvider>
-                <div className="mt-4 flex flex-wrap gap-2 text-xs" aria-label="AI pipeline">
-                  {pipeline.map((step) => (
-                    <a key={step.label} href={step.anchor} className="focus:outline-none">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <span
-                            className={`inline-flex items-center gap-1 rounded-full px-2 py-1 ring-1 ring-border transition ${
-                              step.status === 'done'
-                                ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200'
-                                : 'bg-primary/10 text-primary'
-                            }`}
-                          >
-                            <span
-                              className={`h-2 w-2 rounded-full ${
-                                step.status === 'done' ? 'bg-emerald-500' : 'bg-primary'
-                              }`}
-                            />
-                            {step.label}
-                          </span>
-                        </TooltipTrigger>
-                        <TooltipContent side="bottom" className="max-w-xs text-[11px]">
-                          {step.hint}
-                        </TooltipContent>
-                      </Tooltip>
-                    </a>
-                  ))}
-                </div>
-              </TooltipProvider>
-              {aiBusy && (
-                <div className="mt-2 inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-1 text-[11px] text-primary">
-                  <span className="h-2 w-2 rounded-full bg-primary" />
-                  {aiStatus}
-                </div>
-              )}
-              <div className="mt-4 flex flex-wrap items-center gap-3">
-                  <Badge variant="secondary" className="text-sm">
-                    {scholarship?.amountLabel ?? 'Amount TBA'}
-                  </Badge>
-                <Badge variant="outline" className="text-sm">
-                  {scholarship?.frequencyLabel ?? 'One-time'}
+              <p className="text-lg text-muted-foreground">{scholarship?.provider}</p>
+              <div className="flex flex-wrap items-center gap-2">
+                <Badge variant="secondary" className="text-sm">
+                  {(scholarship?.amountLabel ?? 'Amount TBA') + ' - ' + (scholarship?.frequencyLabel ?? 'One-time')}
                 </Badge>
-                <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                <Badge variant="outline" className="gap-1 text-sm">
                   <CalendarDays className="h-4 w-4" />
-                  <span>Deadline: {scholarship?.deadlineLabel}</span>
+                  <span>Deadline: {scholarship?.deadlineLabel ?? 'Not specified'}</span>
                   {scholarship?.daysLeftLabel && (
-                    <span className="rounded-full bg-red-100 px-2 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/30 dark:text-red-400">
+                    <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-[11px] font-semibold text-red-700 dark:bg-red-900/30 dark:text-red-300">
                       {scholarship.daysLeftLabel}
                     </span>
                   )}
-                </div>
-                <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                  <CheckCircle2
-                    className={`h-4 w-4 ${
-                      effectiveMatchScore != null && effectiveMatchScore >= 75
-                        ? 'text-green-600'
-                        : effectiveMatchScore != null && effectiveMatchScore >= 50
-                          ? 'text-amber-600'
-                          : 'text-muted-foreground'
-                    }`}
-                  />
-                  <span>
-                    {effectiveMatchScore != null
-                      ? `Match ${effectiveMatchScore} - ${matchFitLabel}`
-                      : 'Match score unavailable'}
-                  </span>
-                </div>
+                </Badge>
+                <Badge
+                  className={`gap-1 text-sm ${
+                    effectiveMatchScore != null && effectiveMatchScore >= 75
+                      ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-200'
+                      : effectiveMatchScore != null && effectiveMatchScore >= 50
+                        ? 'bg-amber-500/15 text-amber-700 dark:text-amber-200'
+                        : 'bg-muted text-foreground'
+                  }`}
+                >
+                  <CheckCircle2 className="h-4 w-4" />
+                  {effectiveMatchScore != null
+                    ? `Match ${effectiveMatchScore} - ${matchFitLabel}`
+                    : 'Match score unavailable'}
+                </Badge>
               </div>
-              <p className="mt-2 text-xs text-muted-foreground">
+              <p className="text-xs text-muted-foreground">
                 Using your saved profile + embeddings to rank this scholarship.
               </p>
               {isIneligible && (
-                <p className="mt-1 text-xs text-destructive">
+                <p className="text-xs text-destructive">
                   Likely ineligible based on your profile (country/GPA/demographics). Explain Fit may still work for debugging, but consider skipping this one.
                 </p>
               )}
             </div>
-
-            <section className="space-y-4" id="about">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold">About this scholarship</h2>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExplainFit}
-                  disabled={explainFitLoading || !profileAvailable}
-                >
-                  {explainFitLoading ? (
-                    <>
-                      <Sparkles className="mr-2 h-4 w-4 animate-pulse" />
-                      Analyzing...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="mr-2 h-4 w-4" />
-                      Explain Fit
-                    </>
-                  )}
-                </Button>
+            {aiBusy && (
+              <div className="inline-flex items-center gap-2 rounded-md bg-primary/10 px-3 py-1 text-[11px] text-primary">
+                <span className="h-2 w-2 rounded-full bg-primary" />
+                {aiStatus}
               </div>
-              {!profileAvailable && (
-                <p className="text-xs text-muted-foreground">
-                  Add a saved profile to unlock Explain Fit and planning actions.
-                </p>
-              )}
-              <p className="leading-relaxed text-muted-foreground">
-                {scholarship?.description}
-              </p>
-              <div className="flex items-center gap-4">
-                <Button variant="link" className="h-auto p-0 text-primary" asChild>
-                  <a
-                    href={scholarship?.url ?? '#'}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    View official page <ExternalLink className="ml-1 h-3 w-3" />
-                  </a>
-                </Button>
-                <button
-                  onClick={() => setSourcesOpen(true)}
-                  className="text-xs text-muted-foreground hover:underline"
-                >
-                  Sources used
-                </button>
-              </div>
-              <Dialog open={sourcesOpen} onOpenChange={setSourcesOpen}>
-                <DialogContent className="max-w-lg">
-                  <DialogHeader>
-                    <DialogTitle>Sources used</DialogTitle>
-                    <DialogDescription className="text-xs">
-                      Data that informs this scholarship view and AI pipeline.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-2 text-sm text-muted-foreground">
-                    <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2">
-                      <span>Official website</span>
-                      <Badge variant="outline" className="text-[11px] font-medium">
-                        Used for details
-                      </Badge>
-                    </div>
-                    <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2">
-                      <span>Curated description</span>
-                      <Badge variant="outline" className="text-[11px] font-medium">
-                        Used for personality/themes
-                      </Badge>
-                    </div>
-                    {scholarship?.winnerPatterns && (
-                      <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2">
-                        <span>Winner stories</span>
-                        <Badge variant="outline" className="text-[11px] font-medium">
-                          Patterns only
-                        </Badge>
-                      </div>
-                    )}
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </section>
+            )}
+          </div>
 
-            <Card id="strategy">
-              <CardHeader className="pb-3">
-                <div className="flex items-center justify-between">
-                  <div className="space-y-1">
-                    <CardTitle className="flex items-center gap-2 text-sm">
-                      <Target className="h-4 w-4 text-primary" />
-                      Strategy
-                    </CardTitle>
+          <div className="flex flex-wrap gap-2">
+            {[
+              { label: 'Profile Match', anchor: '#profile-match' },
+              { label: 'Personality', anchor: '#strategy-step' },
+              { label: 'Draft', anchor: '#draft-step' },
+              { label: 'Grade', anchor: '#grade-step' },
+            ].map((chip) => (
+              <Button
+                key={chip.label}
+                variant="outline"
+                size="sm"
+                className="rounded-full border-dashed"
+                onClick={() => scrollToAnchor(chip.anchor)}
+              >
+                {chip.label}
+              </Button>
+            ))}
+          </div>
+
+          <TooltipProvider>
+            <div className="flex flex-wrap gap-2 text-xs" aria-label="AI pipeline">
+              {pipeline.map((step) => (
+                <a key={step.label} href={step.anchor} className="focus:outline-none">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span
+                        className={`inline-flex items-center gap-1 rounded-full px-2 py-1 ring-1 ring-border transition ${
+                          step.status === 'done'
+                            ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-200'
+                            : 'bg-primary/10 text-primary'
+                        }`}
+                      >
+                        <span
+                          className={`h-2 w-2 rounded-full ${
+                            step.status === 'done' ? 'bg-emerald-500' : 'bg-primary'
+                          }`}
+                        />
+                        {step.label}
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom" className="max-w-xs text-[11px]">
+                      {step.hint}
+                    </TooltipContent>
+                  </Tooltip>
+                </a>
+              ))}
+            </div>
+          </TooltipProvider>
+        </header>
+
+        <div className="grid gap-6 lg:grid-cols-[minmax(320px,1fr)_minmax(0,1.35fr)]">
+          <div className="space-y-6" id="profile-match">
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <CardTitle className="text-sm">About this scholarship</CardTitle>
                     <CardDescription className="text-xs">
-                      Tailored advice to maximize your chances.
+                      Snapshot of what this award is about.
                     </CardDescription>
                   </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleExplainFit}
+                    disabled={explainFitLoading || !profileAvailable}
+                  >
+                    {explainFitLoading ? (
+                      <>
+                        <Sparkles className="mr-2 h-4 w-4 animate-pulse" />
+                        Analyzing...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-2 h-4 w-4" />
+                        Explain Fit
+                      </>
+                    )}
+                  </Button>
                 </div>
               </CardHeader>
-              <CardContent className="grid gap-6 md:grid-cols-2">
-                <div className="space-y-3">
-                  <div>
-                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Keywords to Use
-                    </p>
-                    <div className="flex flex-wrap gap-1.5">
-                      {(scholarship?.personalityThemes ?? []).map((theme) => (
-                        <Badge
-                          key={theme}
-                          variant="secondary"
-                          className="rounded-md px-2 py-1 text-[11px]"
-                        >
-                          {theme}
-                        </Badge>
-                      ))}
-                    </div>
-                  </div>
-                  <div>
-                    <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                      Suggested Tone
-                    </p>
-                    <p className="text-sm italic text-muted-foreground">
-                      "{scholarship?.personalityTone || 'Professional & Authentic'}"
-                    </p>
-                  </div>
-                </div>
-                <div>
-                  <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                    Tips for Success
+              <CardContent className="space-y-3">
+                {!profileAvailable && (
+                  <p className="text-xs text-muted-foreground">
+                    Add a saved profile to unlock Explain Fit and planning actions.
                   </p>
-                  <ul className="space-y-2 text-xs text-muted-foreground">
-                    {(scholarship?.winnerPatterns?.success_patterns ?? []).slice(0, 3).map((tip, i) => (
-                      <li key={i} className="flex gap-2">
-                        <span className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-primary" />
-                        <span>{tip}</span>
-                      </li>
-                    ))}
-                    {(!scholarship?.winnerPatterns?.success_patterns?.length) && (
-                      <li>Focus on demonstrating your unique value proposition and alignment with the provider's mission.</li>
-                    )}
-                  </ul>
+                )}
+                <p className="text-sm leading-relaxed text-muted-foreground">
+                  {scholarship?.description}
+                </p>
+                <div className="flex flex-wrap items-center gap-3 text-xs">
+                  <Button variant="link" className="h-auto p-0 text-primary" asChild>
+                    <a
+                      href={scholarship?.url ?? '#'}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      View official page <ExternalLink className="ml-1 h-3 w-3" />
+                    </a>
+                  </Button>
+                  <button
+                    onClick={() => setSourcesOpen(true)}
+                    className="text-xs text-muted-foreground hover:underline"
+                  >
+                    Sources used
+                  </button>
                 </div>
               </CardContent>
             </Card>
 
-            {/* Explain Fit Dialog */}
-            <Dialog open={explainFitOpen} onOpenChange={setExplainFitOpen}>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Why This Scholarship Fits You</DialogTitle>
-                  <DialogDescription>
-                    AI-powered analysis of your profile match with this scholarship
-                  </DialogDescription>
-                </DialogHeader>
-                <div className="flex items-center justify-between text-[11px] text-muted-foreground">
-                  <span>Strengths, gaps, and eligibility pulled from the explanation graph.</span>
-                  {explainFitRaw && (
-                    <button
-                      type="button"
-                      className="font-semibold text-primary hover:underline"
-                      onClick={() => setShowExplainFitJson((v) => !v)}
-                    >
-                      For judges: {showExplainFitJson ? 'Hide JSON' : 'See JSON'}
-                    </button>
-                  )}
-                </div>
-                <div
-                  className={
-                    showExplainFitJson && explainFitRaw
-                      ? 'grid gap-4 md:grid-cols-[3fr_2fr]'
-                      : 'space-y-4'
-                  }
-                >
-                  <div className="space-y-4">
-                    {explainFitResult ? (
-                      <div className="rounded-lg bg-muted/50 p-4 text-sm leading-relaxed whitespace-pre-wrap">
-                        {explainFitResult}
-                      </div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">No explanation available.</p>
-                    )}
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <CardTitle className="text-sm">Eligibility</CardTitle>
+                    <CardDescription className="text-xs">How we checked this for you.</CardDescription>
                   </div>
-                  {showExplainFitJson && explainFitRaw && (
-                    <div className="rounded-lg border border-border bg-background p-3">
-                      <p className="mb-2 text-[11px] font-semibold text-muted-foreground">
-                        Structured output
-                      </p>
-                      <pre className="max-h-[360px] overflow-auto rounded-md bg-muted p-3 text-[11px] leading-relaxed">
-                        {JSON.stringify(explainFitRaw, null, 2)}
-                      </pre>
-                    </div>
+                  <button
+                    className="text-[11px] text-muted-foreground hover:underline"
+                    onClick={() => setEligibilityInfoOpen((v) => !v)}
+                  >
+                    How we checked
+                  </button>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex flex-wrap gap-2 text-[11px]">
+                  {scholarship?.academicSummary && (
+                    <Badge variant="outline" className="rounded-full px-2 py-0.5">
+                      {scholarship.academicSummary}
+                    </Badge>
+                  )}
+                  {scholarship?.geographicSummary && (
+                    <Badge variant="outline" className="rounded-full px-2 py-0.5">
+                      {scholarship.geographicSummary}
+                    </Badge>
+                  )}
+                  {scholarship?.demographicSummary && (
+                    <Badge variant="outline" className="rounded-full px-2 py-0.5">
+                      {scholarship.demographicSummary}
+                    </Badge>
                   )}
                 </div>
-              </DialogContent>
-            </Dialog>
+                {eligibilityInfoOpen && (
+                  <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
+                    Compared scholarship eligibility fields against your profile from `/api/profile`.
+                    We only check what you filled; no guessing.
+                  </div>
+                )}
+                <ul className="space-y-2">
+                  {(scholarship?.eligibilityBullets ?? []).map((item, i) => (
+                    <li key={i} className="flex items-start gap-2 text-sm text-foreground">
+                      <CheckCircle2 className="mt-0.5 h-4 w-4 text-green-600 dark:text-green-500" />
+                      <span className="text-muted-foreground">{item}</span>
+                    </li>
+                  ))}
+                  {!loading && scholarship && scholarship.eligibilityBullets.length === 0 && (
+                    <li className="text-sm text-muted-foreground">
+                      Eligibility details are not fully specified in our dataset. Check the official page
+                      to confirm the latest criteria.
+                    </li>
+                  )}
+                </ul>
+              </CardContent>
+            </Card>
 
-            <section className="space-y-4" id="match">
-              <div className="flex items-center justify-between">
-                <h2 className="text-xl font-semibold">Eligibility</h2>
-                <button
-                  className="text-xs text-muted-foreground hover:underline"
-                  onClick={() => setEligibilityInfoOpen((v) => !v)}
-                >
-                  How we checked this
-                </button>
-              </div>
-              <div className="flex flex-wrap gap-2 text-[11px]">
-                {scholarship?.academicSummary && (
-                  <Badge variant="outline" className="rounded-full px-2 py-0.5">
-                    {scholarship.academicSummary}
-                  </Badge>
-                )}
-                {scholarship?.geographicSummary && (
-                  <Badge variant="outline" className="rounded-full px-2 py-0.5">
-                    {scholarship.geographicSummary}
-                  </Badge>
-                )}
-                {scholarship?.demographicSummary && (
-                  <Badge variant="outline" className="rounded-full px-2 py-0.5">
-                    {scholarship.demographicSummary}
-                  </Badge>
-                )}
-              </div>
-              {eligibilityInfoOpen && (
-                <div className="rounded-md border border-border bg-muted/30 px-3 py-2 text-[11px] text-muted-foreground">
-                  Compared scholarship eligibility fields against your profile from `/api/profile`. We only check what you filled; no guessing.
+            <Card>
+              <CardHeader className="pb-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <CardTitle className="text-sm">What you'll likely need</CardTitle>
+                    <CardDescription className="text-xs">
+                      Application components & workload.
+                    </CardDescription>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={() => scrollToAnchor('#plan-step')}>
+                    Plan this scholarship
+                  </Button>
                 </div>
-              )}
-              <Card>
-                <CardContent className="pt-6">
-                  <ul className="space-y-3">
-                    {(scholarship?.eligibilityBullets ?? []).map((item, i) => (
-                      <li key={i} className="flex items-start gap-3">
-                        <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-green-600 dark:text-green-500" />
-                        <span className="text-sm">{item}</span>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span
+                    className={`inline-block h-2 w-2 rounded-full ${
+                      scholarship?.workloadLabel === 'Light'
+                        ? 'bg-green-500'
+                        : scholarship?.workloadLabel === 'Medium'
+                          ? 'bg-amber-500'
+                          : 'bg-red-500'
+                    }`}
+                  />
+                  <span className="font-medium">{scholarship?.workloadLabel ?? 'Workload'}</span>
+                  {scholarship?.workloadItems?.length ? (
+                    <span className="text-muted-foreground">
+                      {scholarship.workloadItems.join(' - ')}
+                    </span>
+                  ) : null}
+                </div>
+                {(scholarship?.components ?? []).length > 0 ? (
+                  <ul className="space-y-2 text-sm text-muted-foreground">
+                    {scholarship?.components.map((c) => (
+                      <li key={c.type} className="flex items-center gap-2">
+                        <c.icon className="h-4 w-4 text-primary" />
+                        <span>{c.label}</span>
                       </li>
                     ))}
-                    {!loading &&
-                      scholarship &&
-                      scholarship.eligibilityBullets.length === 0 && (
-                        <li className="text-sm text-muted-foreground">
-                          Eligibility details are not fully specified in our dataset. Check
-                          the official page to confirm the latest criteria.
-                        </li>
-                      )}
                   </ul>
-                </CardContent>
-              </Card>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Components for this scholarship are not fully structured yet. Check the official page
+                    for the latest list of essays, references, and other materials.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          </div>
 
-              <Card id="essay-workspace">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">Essay workspace</CardTitle>
-                  <CardDescription className="text-xs">
-                    Draft with AI (requires admin key) and grade against this scholarship&apos;s rubric.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {rubric && rubric.length > 0 && (
-                    <div className="space-y-1">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
-                        Key criteria
+          <div className="space-y-6" id="workspace">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">Application workspace</CardTitle>
+                <CardDescription className="text-xs">
+                  Follow the guided steps to go from strategy &rarr; draft &rarr; grade &rarr; plan.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="flex flex-wrap items-center gap-3">
+                {workspaceSteps.map((step, idx) => (
+                  <button
+                    key={step.label}
+                    onClick={() => setActiveWorkspaceStep(idx)}
+                    className={`group inline-flex items-center gap-2 rounded-full border px-3 py-2 text-xs transition focus:outline-none ${
+                      activeWorkspaceStep === idx
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : step.status === 'done'
+                        ? 'border-primary bg-primary/10 text-primary'
+                        : 'border-border text-muted-foreground hover:border-primary/60'
+                    }`}
+                  >
+                    <span
+                      className={`flex h-6 w-6 items-center justify-center rounded-full text-[11px] font-semibold ${
+                        step.status === 'done' ? 'bg-primary text-primary-foreground' : 'bg-muted text-foreground'
+                      }`}
+                    >
+                      {idx + 1}
+                    </span>
+                    <div className="flex flex-col items-start">
+                      <span className="font-semibold text-foreground">{step.label}</span>
+                      <span className="text-[11px] text-muted-foreground">{step.hint}</span>
+                    </div>
+                  </button>
+                ))}
+                </div>
+                <div className="flex items-center justify-between gap-2 text-xs">
+                  <div className="flex items-center gap-1">
+                    {workspaceSteps.map((step, idx) => (
+                      <button
+                        key={step.label}
+                        className={`h-2.5 w-2.5 rounded-full transition ${
+                          activeWorkspaceStep === idx ? 'bg-primary' : 'bg-muted-foreground/40'
+                        }`}
+                        aria-label={`Go to ${step.label}`}
+                        onClick={() => setActiveWorkspaceStep(idx)}
+                      />
+                    ))}
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => setActiveWorkspaceStep((prev) => Math.max(0, prev - 1))}
+                      disabled={activeWorkspaceStep === 0}
+                    >
+                      Prev
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={() =>
+                        setActiveWorkspaceStep((prev) => Math.min(workspaceSteps.length - 1, prev + 1))
+                      }
+                      disabled={activeWorkspaceStep === workspaceSteps.length - 1}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
+            <div className="relative overflow-hidden rounded-2xl border border-border bg-muted/20 p-1">
+              <div
+                className="flex transition-transform duration-500"
+                style={{ transform: `translateX(-${activeWorkspaceStep * 100}%)` }}
+              >
+                <div className="min-w-full px-1">
+                  <Card id="strategy-step" className="shadow-sm">
+            <CardHeader className="pb-3">
+              <div className="flex items-center justify-between gap-2">
+                <div>
+                  <CardTitle className="flex items-center gap-2 text-sm">
+                    <Target className="h-4 w-4 text-primary" />
+                      1. Strategy & Personality
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      AI-explained plan grounded in winner patterns and provider language.
+                    </CardDescription>
+                  </div>
+                  <Badge variant="outline" className="text-[11px]">AI-explained</Badge>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2 rounded-md border border-border bg-muted/30 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                    Winning strategy
+                  </p>
+                  <p className="text-sm text-muted-foreground leading-relaxed">
+                    {formatLabel(scholarship?.winnerPatterns?.winner_profile) ||
+                      "Lead with the story that best matches this provider's priorities. Show impact, clarity of purpose, and how your work aligns with their mission."}
+                  </p>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-3">
+                    <div>
+                      <p className="mb-2 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Keywords to use
                       </p>
                       <div className="flex flex-wrap gap-1.5">
-                        {rubric.map((c) => (
-                          <Button
-                            key={c.id}
-                            size="sm"
-                            variant={reviseCriterionId === c.id ? 'default' : 'outline'}
-                            className="h-7 rounded-full px-3 text-[11px]"
-                            onClick={() => setReviseCriterionId(c.id)}
-                          >
-                            {c.name}
-                          </Button>
+                        {(scholarship?.personalityThemes.length
+                          ? scholarship.personalityThemes
+                          : scholarship?.winnerPatterns?.key_themes ?? []
+                        ).map((theme) => (
+                          <Badge key={theme} variant="secondary" className="rounded-md px-2 py-1 text-[11px]">
+                            {formatLabel(theme)}
+                          </Badge>
                         ))}
+                        {!scholarship?.personalityThemes?.length &&
+                          !(scholarship?.winnerPatterns?.key_themes?.length) && (
+                            <span className="text-xs text-muted-foreground">Themes will appear once personality is loaded.</span>
+                          )}
                       </div>
                     </div>
-                  )}
-                  <p className="text-[11px] text-muted-foreground">
-                    AI-safe: we only send scholarship context and your essay text, not your personal contact details.
+                    <div className="space-y-1">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                        Suggested tone
+                      </p>
+                      <p className="text-sm italic text-muted-foreground">
+                        "{scholarship?.personalityTone || 'Professional & authentic'}"
+                      </p>
+                      {data?.personality?.notes?.length ? (
+                        <p className="text-xs text-muted-foreground">
+                          Emphasize: {data.personality.notes.join(', ')}
+                        </p>
+                      ) : null}
+                    </div>
+                    {scholarship?.winnerPatterns?.success_patterns?.length ? (
+                      <div className="space-y-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Tips for success
+                        </p>
+                        <ul className="space-y-1.5 text-xs text-muted-foreground">
+                          {scholarship.winnerPatterns.success_patterns.slice(0, 3).map((tip, i) => (
+                            <li key={i} className="flex gap-2">
+                              <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary" />
+                              <span>{formatLabel(tip)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                    {(scholarship?.winners?.length ?? 0) > 0 ? (
+                      <div className="space-y-2 rounded-md border border-dashed border-border/70 bg-background p-3">
+                        <div className="flex items-center justify-between">
+                          <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                            Past winner highlights
+                          </p>
+                          <Badge variant="outline" className="text-[10px]">
+                            Inspiration only
+                          </Badge>
+                        </div>
+                        <ul className="space-y-1.5 text-xs text-muted-foreground">
+                          {(scholarship?.winners ?? []).slice(0, 2).map((w, idx) => (
+                            <li key={idx} className="space-y-1 rounded-md border border-border/60 bg-muted/40 p-2">
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-foreground">
+                                  {w.winner_name || 'Winner story'}
+                                </span>
+                                {w.year ? <span className="text-[11px]">{w.year}</span> : null}
+                              </div>
+                              {w.story_excerpt ? <p className="text-xs leading-relaxed">{formatLabel(w.story_excerpt)}</p> : null}
+                              {w.themes?.length ? (
+                                <div className="flex flex-wrap gap-1">
+                                  {w.themes.slice(0, 3).map((t) => (
+                                    <Badge key={t} variant="secondary" className="rounded px-2 py-0 text-[10px]">
+                                      {formatLabel(t)}
+                                    </Badge>
+                                  ))}
+                                </div>
+                              ) : null}
+                            </li>
+                          ))}
+                        </ul>
+                      </div>
+                    ) : null}
+                  </div>
+
+                  <div className="space-y-3">
+                    {personalityWeights.length > 0 && (
+                      <div className="space-y-2">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          Hidden priorities
+                        </p>
+                        <div className="space-y-2">
+                          {personalityWeights.map((w) => (
+                            <div key={w.key} className="space-y-1 text-xs text-muted-foreground">
+                              <div className="flex items-center justify-between">
+                                <span className="font-medium text-foreground">{w.key}</span>
+                                <span className="text-[11px]">{w.value.toFixed(2)}</span>
+                              </div>
+                              <div className="h-1.5 w-full rounded-full bg-muted">
+                                <div
+                                  className="h-full rounded-full bg-primary"
+                                  style={{ width: `${w.pct}%` }}
+                                />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {data?.personality?.tone && (
+                      <div className="space-y-1 text-xs text-muted-foreground">
+                        <p className="font-semibold text-foreground">Tone guide</p>
+                        <p>{data.personality.tone}</p>
+                      </div>
+                    )}
+                    {data?.personality?.notes?.length ? (
+                      <div className="space-y-1 text-xs text-muted-foreground">
+                        <p className="font-semibold text-foreground">Writing focus</p>
+                        <p>{data.personality.notes.join(', ')}</p>
+                      </div>
+                    ) : null}
+                  </div>
+                </div>
+
+                <div className="space-y-2 rounded-md border border-dashed border-primary/40 bg-primary/5 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-primary">
+                    Ready? Send a story to Draft
                   </p>
                   <Textarea
-                    value={essayText}
-                    onChange={(e) => setEssayText(e.target.value)}
-                    rows={8}
+                    value={strategyStory}
+                    onChange={(e) => setStrategyStory(e.target.value)}
+                    rows={3}
                     className="text-sm"
-                    placeholder="Paste or generate your essay here..."
+                    placeholder="Tell us one project, moment, or challenge that shows why you fit."
                   />
                   <div className="flex flex-wrap items-center gap-2 text-xs">
-                    <Button size="sm" onClick={handleDraft} disabled={draftLoading}>
-                      {draftLoading ? 'Drafting…' : 'Draft with AI'}
+                    <Button size="sm" onClick={handleSendStoryToDraft} disabled={!strategyStory.trim()}>
+                      Send to Draft
                     </Button>
-                    <Button size="sm" variant="outline" onClick={handleGrade} disabled={gradeLoading}>
-                      {gradeLoading ? 'Grading…' : 'Grade with rubric'}
+                    <Button size="sm" variant="ghost" onClick={() => scrollToAnchor('#draft-step')}>
+                      Skip to Draft
                     </Button>
-                    {draftError && <span className="text-destructive">{draftError}</span>}
-                    {gradeError && <span className="text-destructive">{gradeError}</span>}
+                  </div>
+                </div>
+              </CardContent>
+                  </Card>
+                </div>
+                <div className="min-w-full px-1">
+                  <Card id="draft-step" className="shadow-sm">
+              <CardHeader className="pb-3">
+                <div className="flex items-center justify-between gap-2">
+                  <div>
+                    <CardTitle className="flex items-center gap-2 text-sm">
+                      <FileText className="h-4 w-4 text-primary" />
+                      2. Draft essay
+                    </CardTitle>
+                    <CardDescription className="text-xs">
+                      Draft with AI, keeping the rubric and priorities in view.
+                    </CardDescription>
+                  </div>
+                  {personalityWeights.length > 1 && (
+                    <Badge variant="outline" className="text-[11px]">
+                      Focus: {personalityWeights.slice(0, 2).map((w) => w.key).join(' - ')}
+                    </Badge>
+                  )}
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="grid gap-4 md:grid-cols-[minmax(0,1.4fr)_minmax(240px,1fr)]">
+                  <div className="space-y-3">
+                    <Textarea
+                      value={essayText}
+                      onChange={(e) => setEssayText(e.target.value)}
+                      rows={8}
+                      className="text-sm"
+                      placeholder="Paste or generate your essay here..."
+                    />
+                    <div className="flex flex-wrap items-center gap-2 text-xs">
+                      <Button size="sm" onClick={handleDraft} disabled={draftLoading}>
+                        {draftLoading ? 'Drafting...' : 'Draft with AI'}
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => scrollToAnchor('#grade-step')}>
+                        Grade this next
+                      </Button>
+                      {draftError && <span className="text-destructive">{draftError}</span>}
+                    </div>
+                    <p className="text-[11px] text-muted-foreground">
+                      AI-safe: we only send scholarship context and your essay text, not your personal contact details.
+                    </p>
+                  </div>
+
+                  <div className="space-y-2 rounded-md border border-border bg-muted/30 p-3">
+                    <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                      Key criteria
+                    </p>
+                    {rubric && rubric.length > 0 ? (
+                      <ul className="space-y-1.5 text-xs text-muted-foreground">
+                        {rubric.map((item) => (
+                          <li key={item.id} className="flex items-start gap-2">
+                            <span className="mt-0.5 h-2 w-2 rounded-full bg-primary" />
+                            <div>
+                              <p className="font-semibold text-foreground">{item.name}</p>
+                              {item.description && <p>{item.description}</p>}
+                            </div>
+                          </li>
+                        ))}
+                      </ul>
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Rubric not loaded yet. We will still draft based on strategy and themes.
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </CardContent>
+                  </Card>
+                </div>
+                <div className="min-w-full px-1">
+                  <Card id="grade-step" className="shadow-sm">
+              <CardHeader className="pb-3">
+                <CardTitle className="flex items-center gap-2 text-sm">
+                  <ListTodo className="h-4 w-4 text-primary" />
+                  3. Grade & compare
+                </CardTitle>
+                <CardDescription className="text-xs">
+                  Measure your draft against the rubric, compare to a generic essay, and get targeted revisions.
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <Button size="sm" onClick={handleGrade} disabled={gradeLoading}>
+                      {gradeLoading ? 'Grading...' : 'Grade with rubric'}
+                    </Button>
+                    {gradeError && <span className="text-xs text-destructive">{gradeError}</span>}
                   </div>
                   {gradeResult && (
-                    <div id="grade" className="space-y-2 rounded-md bg-muted/40 p-3 text-xs">
+                    <div className="space-y-2 rounded-md bg-muted/40 p-3 text-xs">
                       <div className="flex items-center gap-2 text-[11px] font-semibold uppercase text-muted-foreground">
                         Readiness: {gradeResult.readiness}
                       </div>
-                      <p className="text-[11px] text-muted-foreground">
-                        {gradeResult.overall_comment}
-                      </p>
+                      <p className="text-[11px] text-muted-foreground">{gradeResult.overall_comment}</p>
                       <ul className="space-y-1.5">
                         {gradeResult.criteria.map((c) => (
                           <li key={c.id} className="flex items-start gap-2">
@@ -1567,42 +1832,75 @@ export function ScholarshipDetailPage() {
                       </ul>
                     </div>
                   )}
-                </CardContent>
-              </Card>
-              <Card id="compare">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-sm">Compare essays</CardTitle>
-                  <CardDescription className="text-xs">
-                    Grade a generic vs tailored essay and see where the tailored version wins.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="space-y-3">
+                  {scholarship?.winnerPatterns && (
+                    <div className="space-y-2 rounded-md border border-border bg-muted/30 p-3 text-xs">
+                      <div className="flex items-center justify-between">
+                        <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
+                          How you compare to winners
+                        </p>
+                        <Badge variant="outline" className="text-[10px]">Patterns only</Badge>
+                      </div>
+                      <p className="text-[11px] text-muted-foreground">
+                        Winners usually: {formatLabel(scholarship.winnerPatterns.winner_profile) || 'Emphasize impact, leadership, and reflection.'}
+                      </p>
+                      {scholarship.winnerPatterns.key_themes?.length ? (
+                        <div className="flex flex-wrap gap-1">
+                          {scholarship.winnerPatterns.key_themes.slice(0, 4).map((t) => (
+                            <Badge key={t} variant="secondary" className="rounded px-2 py-0 text-[10px]">
+                              {formatLabel(t)}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : null}
+                      {scholarship.winnerPatterns.success_patterns?.length ? (
+                        <ul className="space-y-1 text-[11px] text-muted-foreground">
+                          {scholarship.winnerPatterns.success_patterns.slice(0, 2).map((tip, i) => (
+                            <li key={i} className="flex gap-2">
+                              <span className="mt-1 h-1.5 w-1.5 rounded-full bg-primary" />
+                              <span>{formatLabel(tip)}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                      {gradeResult?.criteria?.length ? (() => {
+                        const weakest = [...gradeResult.criteria].sort((a, b) => (a.score / a.max) - (b.score / b.max))[0]
+                        return weakest ? (
+                          <p className="text-[11px] text-muted-foreground">
+                            Your lowest rubric area: <span className="font-semibold text-foreground">{weakest.name}</span>. Shape this section like winners do above.
+                          </p>
+                        ) : null
+                      })() : null}
+                    </div>
+                  )}
+                </div>
+
+                <Separator />
+
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-foreground">Generic vs tailored</p>
+                    <span className="text-[11px] text-muted-foreground">See where the tailored draft wins</span>
+                  </div>
                   <div className="grid gap-3 md:grid-cols-2">
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold text-foreground">Generic essay</p>
-                        <span className="text-[11px] text-muted-foreground">Control</span>
-                      </div>
                       <Textarea
                         value={genericEssay}
                         onChange={(e) => setGenericEssay(e.target.value)}
-                        rows={8}
+                        rows={6}
                         className="text-sm"
                         placeholder="Paste a baseline / generic essay here..."
                       />
+                      <p className="text-[11px] text-muted-foreground">Generic essay (control)</p>
                     </div>
                     <div className="space-y-2">
-                      <div className="flex items-center justify-between">
-                        <p className="text-xs font-semibold text-foreground">Tailored essay</p>
-                        <span className="text-[11px] text-muted-foreground">From workspace</span>
-                      </div>
                       <Textarea
                         value={essayText}
                         onChange={(e) => setEssayText(e.target.value)}
-                        rows={8}
+                        rows={6}
                         className="text-sm"
                         placeholder="Use your tailored draft here..."
                       />
+                      <p className="text-[11px] text-muted-foreground">Tailored essay (from workspace)</p>
                     </div>
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-xs">
@@ -1615,8 +1913,8 @@ export function ScholarshipDetailPage() {
                   {(compareResult.generic || compareResult.tailored) && (
                     <div className="space-y-3 rounded-md bg-muted/30 p-3 text-xs">
                       <div className="flex flex-wrap gap-4 text-[11px] font-semibold uppercase text-muted-foreground">
-                        <span>Generic: {compareResult.generic?.readiness ?? '—'}</span>
-                        <span>Tailored: {compareResult.tailored?.readiness ?? '—'}</span>
+                        <span>Generic: {compareResult.generic?.readiness ?? '-'}</span>
+                        <span>Tailored: {compareResult.tailored?.readiness ?? '-'}</span>
                         {compareResult.generic?.criteria && compareResult.tailored?.criteria ? (
                           <span className="text-primary">
                             Tailored score delta:{' '}
@@ -1655,474 +1953,104 @@ export function ScholarshipDetailPage() {
                       </div>
                     </div>
                   )}
-                </CardContent>
-              </Card>
-            </section>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Targeted revision (RubricCoach)</CardTitle>
-                <CardDescription className="text-xs">
-                  Pick a weak criterion and request a focused revision. Accept or discard locally.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                {!rubric && (
-                  <p className="text-[11px] text-muted-foreground">
-                    Rubric not loaded yet. Try again in a moment.
-                  </p>
-                )}
-                {rubric && rubric.length === 0 && (
-                  <p className="text-[11px] text-muted-foreground">
-                    No rubric found for this scholarship.
-                  </p>
-                )}
-                {rubric && rubric.length > 0 && (
-                  <>
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-medium text-muted-foreground">
-                        Criterion
-                      </label>
-                      <select
-                        value={reviseCriterionId}
-                        onChange={(e) => setReviseCriterionId(e.target.value)}
-                        className="w-full rounded-md border border-border bg-background px-2 py-1 text-xs"
-                      >
-                        {rubric.map((item) => (
-                          <option key={item.id} value={item.id}>
-                            {item.name}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="space-y-1">
-                      <label className="text-[11px] font-medium text-muted-foreground">
-                        Your current essay snippet
-                      </label>
-                      <Textarea
-                        value={reviseText}
-                        onChange={(e) => setReviseText(e.target.value)}
-                        rows={6}
-                        className="text-xs"
-                        placeholder="Paste the section to revise..."
-                      />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-2 text-[11px]">
-                      <Button size="sm" onClick={handleRevise} disabled={reviseLoading}>
-                        {reviseLoading ? 'Revising…' : 'Revise for this criterion'}
-                      </Button>
-                      {reviseError && (
-                        <span className="text-destructive">{reviseError}</span>
-                      )}
-                    </div>
-                    {revisedText && (
-                      <div className="space-y-2 rounded-md bg-muted/30 p-3">
-                        <p className="text-[11px] font-semibold text-muted-foreground">
-                          Revision candidate
-                        </p>
-                        <div className="grid gap-2 text-xs md:grid-cols-2">
-                          <div className="space-y-1">
-                            <p className="text-[11px] font-medium text-muted-foreground">Original</p>
-                            <div className="rounded-md border border-border bg-background p-2 whitespace-pre-wrap">
-                              {reviseText || '(empty)'}
-                            </div>
-                          </div>
-                          <div className="space-y-1">
-                            <p className="text-[11px] font-medium text-muted-foreground">Revised</p>
-                            <div className="rounded-md border border-border bg-background p-2 whitespace-pre-wrap">
-                              {revisedText}
-                            </div>
-                          </div>
-                        </div>
-                        {reviseRationale && (
-                          <p className="text-[11px] text-muted-foreground">
-                            Rationale: {reviseRationale}
-                          </p>
-                        )}
-                        <div className="flex gap-2">
-                          <Button size="sm" variant="default" onClick={acceptRevision}>
-                            Accept revision
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => {
-                              setRevisedText(null)
-                              setReviseRationale(null)
-                            }}
-                          >
-                            Discard
-                          </Button>
-                        </div>
-                      </div>
-                    )}
-                  </>
-                )}
-              </CardContent>
-            </Card>
-
-
-            <Dialog open={profileJsonOpen} onOpenChange={setProfileJsonOpen}>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Raw profile (for judges)</DialogTitle>
-                  <DialogDescription className="text-xs">
-                    Structured profile data currently cached in your browser.
-                  </DialogDescription>
-                </DialogHeader>
-                {profileJson ? (
-                  <pre className="max-h-[420px] overflow-auto rounded-md bg-muted p-3 text-[11px] leading-relaxed">
-                    {JSON.stringify(profileJson, null, 2)}
-                  </pre>
-                ) : (
-                  <p className="text-sm text-muted-foreground">
-                    No cached profile found in local storage.
-                  </p>
-                )}
-              </DialogContent>
-            </Dialog>
-          </div>
-
-          {/* Right Column (Sticky) */}
-          <div className="space-y-6 lg:sticky lg:top-24 lg:h-fit">
-            <Card className="border-primary/20 shadow-md" id="personality">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <Lightbulb className="h-4 w-4 text-primary" />
-                  How to stand out here
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  Personality and winner patterns inferred from the official description and
-                  public recipient stories.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                    Core themes
-                  </p>
-                  <div className="flex flex-wrap gap-1.5">
-                    {(scholarship?.personalityThemes ?? []).map((theme) => (
-                      <Badge
-                        key={theme}
-                        variant="secondary"
-                        className="rounded-full px-2 py-0.5 text-[11px]"
-                      >
-                        {theme}
-                      </Badge>
-                    ))}
-                    {scholarship &&
-                      scholarship.personalityThemes.length === 0 && (
-                        <p className="text-xs text-muted-foreground">
-                          Run the personality profiler for this scholarship to see what it
-                          really cares about.
-                        </p>
-                      )}
-                  </div>
                 </div>
 
-                {scholarship?.winnerPatterns && (
-                  <div className="space-y-2">
-                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      Winner patterns
-                    </p>
-                    <ul className="space-y-1.5 text-xs text-muted-foreground">
-                      {scholarship.winnerPatterns.success_patterns.map((p, idx) => (
-                        <li key={idx} className="flex gap-2">
-                          <span className="mt-0.5 h-1.5 w-1.5 rounded-full bg-primary" />
-                          <span>{p}</span>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                <Separator />
 
-                {scholarship?.winnerPatterns && (
-                  <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" size="sm" className="w-full">
-                        View typical winner profile
-                      </Button>
-                    </DialogTrigger>
-                    <DialogContent className="max-w-lg">
-                      <DialogHeader>
-                        <DialogTitle>Typical winner profile</DialogTitle>
-                        <DialogDescription className="text-xs">
-                          High-level, anonymized description based on public recipient
-                          stories.
-                        </DialogDescription>
-                      </DialogHeader>
-                      <div className="space-y-3 text-sm">
-                        <p className="leading-relaxed">
-                          {scholarship.winnerPatterns.winner_profile}
-                        </p>
-                        <Separator />
-                        <div>
-                          <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                            Key themes
-                          </p>
-                          <div className="flex flex-wrap gap-1.5">
-                            {scholarship.winnerPatterns.key_themes.map((t) => (
-                              <Badge
-                                key={t}
-                                variant="outline"
-                                className="rounded-full px-2 py-0.5 text-[11px]"
-                              >
-                                {t}
-                              </Badge>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    </DialogContent>
-                  </Dialog>
-                )}
-                {personalityWeights.length > 0 && (
-                  <div className="space-y-2">
-                    <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
-                      What they weigh most
-                    </p>
-                    <div className="space-y-2">
-                      {personalityWeights.map((w) => (
-                        <div key={w.key} className="space-y-1 text-xs text-muted-foreground">
-                          <div className="flex items-center justify-between">
-                            <span className="font-medium text-foreground">{w.key}</span>
-                            <span className="text-[11px]">{w.value.toFixed(2)}</span>
-                          </div>
-                          <div className="h-1.5 w-full rounded-full bg-muted">
-                            <div
-                              className="h-full rounded-full bg-primary"
-                              style={{ width: `${w.pct}%` }}
-                            />
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <p className="text-xs font-semibold text-foreground">Targeted revision (RubricCoach)</p>
+                    <span className="text-[11px] text-muted-foreground">Improve one criterion at a time</span>
                   </div>
-                )}
-
-                {data?.personality?.tone && (
-                  <div className="space-y-1 text-xs text-muted-foreground">
-                    <p className="font-semibold text-foreground">Tone guide</p>
-                    <p>{data.personality.tone}</p>
-                  </div>
-                )}
-                {data?.personality?.notes?.length ? (
-                  <div className="space-y-1 text-xs text-muted-foreground">
-                    <p className="font-semibold text-foreground">Writing focus</p>
-                    <p>{data.personality.notes.join(', ')}</p>
-                  </div>
-                ) : null}
-              </CardContent>
-              <CardFooter className="border-t bg-muted/40 px-4 py-3">
-                <div className="flex w-full items-center justify-between text-[11px] text-muted-foreground">
-                  <span>Based on curated data, not scraped web content.</span>
-                </div>
-              </CardFooter>
-            </Card>
-
-            <Card className="border-primary/20 shadow-md">
-              <CardHeader className="pb-3">
-                <CardTitle className="flex items-center gap-2 text-sm">
-                  <FileText className="h-4 w-4 text-primary" />
-                  Application components
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  What you'll likely need to submit.
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="mb-4 flex items-center gap-2">
-                  <span
-                    className={`inline-block h-2 w-2 rounded-full ${
-                      scholarship?.workloadLabel === 'Light'
-                        ? 'bg-green-500'
-                        : scholarship?.workloadLabel === 'Medium'
-                          ? 'bg-yellow-500'
-                          : 'bg-red-500'
-                    }`}
-                  />
-                  <span className="text-xs font-medium">
-                    {scholarship?.workloadLabel} Workload
-                  </span>
-                  <span className="text-xs text-muted-foreground">
-                    {scholarship?.workloadItems?.join(' • ')}
-                  </span>
-                </div>
-                <ul className="space-y-2 text-xs text-muted-foreground">
-                  <li className="flex items-center gap-2">
-                    <FileText className="h-3.5 w-3.5 text-primary" />
-                    <span>Personal statement essay</span>
-                  </li>
-                  <li className="flex items-center gap-2">
-                    <GraduationCap className="h-3.5 w-3.5 text-primary" />
-                    <span>Official transcript</span>
-                  </li>
-                  {scholarship?.workloadItems?.includes('Resume') && (
-                    <li className="flex items-center gap-2">
-                      <Users className="h-3.5 w-3.5 text-primary" />
-                      <span>Resume / CV</span>
-                    </li>
+                  {!rubric && (
+                    <p className="text-[11px] text-muted-foreground">Rubric not loaded yet. Try again in a moment.</p>
                   )}
-                </ul>
+                  {rubric && rubric.length === 0 && (
+                    <p className="text-[11px] text-muted-foreground">No rubric found for this scholarship.</p>
+                  )}
+                  {rubric && rubric.length > 0 && (
+                    <>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-medium text-muted-foreground">Criterion</label>
+                        <select
+                          value={reviseCriterionId}
+                          onChange={(e) => setReviseCriterionId(e.target.value)}
+                          className="w-full rounded-md border border-border bg-background px-2 py-1 text-xs"
+                        >
+                          {rubric.map((item) => (
+                            <option key={item.id} value={item.id}>
+                              {item.name}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="space-y-1">
+                        <label className="text-[11px] font-medium text-muted-foreground">
+                          Your current essay snippet
+                        </label>
+                        <Textarea
+                          value={reviseText}
+                          onChange={(e) => setReviseText(e.target.value)}
+                          rows={5}
+                          className="text-xs"
+                          placeholder="Paste the section to revise..."
+                        />
+                      </div>
+                      <div className="flex flex-wrap items-center gap-2 text-[11px]">
+                        <Button size="sm" onClick={handleRevise} disabled={reviseLoading}>
+                          {reviseLoading ? 'Revising...' : 'Improve this section'}
+                        </Button>
+                        {reviseError && <span className="text-destructive">{reviseError}</span>}
+                      </div>
+                      {reviseRationale && (
+                        <div className="rounded-md bg-muted/50 p-3 text-[11px] text-muted-foreground">
+                          <p className="mb-1 font-semibold text-foreground">Why this change</p>
+                          <p>{reviseRationale}</p>
+                        </div>
+                      )}
+                      {revisedText && (
+                        <div className="space-y-2 rounded-md border border-border bg-background p-3 text-[11px]">
+                          <div className="flex items-center justify-between">
+                            <p className="font-semibold text-foreground">AI suggestion</p>
+                            <div className="flex items-center gap-2">
+                              <Button size="sm" variant="ghost" onClick={acceptRevision}>
+                                Accept
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setRevisedText(null)
+                                  setReviseRationale(null)
+                                }}
+                              >
+                                Discard
+                              </Button>
+                            </div>
+                          </div>
+                          <p className="whitespace-pre-wrap text-muted-foreground">{revisedText}</p>
+                        </div>
+                      )}
+                    </>
+                  )}
+                </div>
               </CardContent>
-            </Card>
-
-            <Card className="border-primary/20 bg-primary/5 shadow-md">
+                  </Card>
+                </div>
+                <div className="min-w-full px-1">
+                  <Card id="plan-step" className="shadow-sm">
               <CardHeader className="pb-3">
                 <CardTitle className="flex items-center gap-2 text-sm">
                   <ListTodo className="h-4 w-4 text-primary" />
-                  Plan your application
+                  4. Plan & tasks
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Generate a tailored plan and track progress.
+                  Generate a tailored plan and track progress on your dashboard.
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
-                <p className="text-xs text-muted-foreground">
-                  We'll use this scholarship's components and deadline to suggest a lightweight task list.
-                </p>
-                
-                {planTasks.length > 0 ? (
-                  <div className="space-y-2">
-                    {planTasks.map((task) => (
-                      <div key={task.id} className="flex items-center gap-2 text-xs">
-                        <div className={`h-4 w-4 rounded-full border ${task.completed ? 'bg-primary border-primary' : 'border-muted-foreground'}`} />
-                        <span className={task.completed ? 'line-through text-muted-foreground' : ''}>{task.label}</span>
-                      </div>
-                    ))}
-                    <Button variant="outline" size="sm" className="w-full mt-2" asChild>
-                      <Link to="/dashboard">Go to dashboard</Link>
-                    </Button>
-                  </div>
-                ) : (
-                  <Button 
-                    className="w-full" 
-                    size="sm" 
-                    onClick={handlePlan} 
-                    disabled={planLoading || !profileAvailable}
-                  >
-                    {planLoading ? (
-                      <>
-                        <Sparkles className="mr-2 h-3 w-3 animate-pulse" />
-                        Generating plan...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="mr-2 h-3 w-3" />
-                        Plan this scholarship
-                      </>
-                    )}
-                  </Button>
-                )}
-                
-                {!profileAvailable && (
-                  <p className="text-[10px] text-muted-foreground text-center">
-                    Save a profile to enable planning.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Application components</CardTitle>
-                <CardDescription className="text-xs">
-                  What you’ll likely need to submit.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <div className="flex items-center gap-2 text-xs">
-                  <span
-                    className={`inline-block h-2 w-2 rounded-full ${
-                      scholarship?.workloadLabel === 'Light'
-                        ? 'bg-green-500'
-                        : scholarship?.workloadLabel === 'Medium'
-                          ? 'bg-amber-500'
-                          : 'bg-red-500'
-                    }`}
-                  />
-                  <span className="font-medium">
-                    {scholarship?.workloadLabel ?? 'Workload'}
-                  </span>
-                  {scholarship?.workloadItems?.length ? (
-                    <span className="text-muted-foreground">
-                      {scholarship.workloadItems.join(' · ')}
-                    </span>
-                  ) : null}
-                </div>
-                {(scholarship?.components ?? []).length > 0 ? (
-                  <ul className="space-y-2">
-                    {scholarship?.components.map((c) => (
-                      <li key={c.type} className="flex items-center gap-2 text-xs">
-                        <c.icon className="h-4 w-4 text-primary" />
-                        <span>{c.label}</span>
-                      </li>
-                    ))}
-                  </ul>
-                ) : (
-                  <p className="text-xs text-muted-foreground">
-                    Components for this scholarship are not fully structured yet. Check the
-                    official page for the latest list of essays, references, and other
-                    materials.
-                  </p>
-                )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader className="pb-3">
-                <CardTitle className="text-sm">Plan your application</CardTitle>
-                <CardDescription className="text-xs">
-                  Generate a tailored plan of tasks and then track progress from your
-                  dashboard.
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <p className="text-xs text-muted-foreground">
-                  We&apos;ll use this scholarship&apos;s components and deadline to suggest a
-                  lightweight task list (essays, references, transcript, and more).
-                </p>
-                <div className="flex flex-wrap items-center gap-2">
-                  <Button
-                    size="sm"
-                    className="gap-1 text-xs"
-                    onClick={handlePlanApplication}
-                    disabled={planLoading || !profileAvailable}
-                  >
-                    {planLoading ? (
-                      <>
-                        <Sparkles className="h-3 w-3 animate-pulse" />
-                        Creating plan...
-                      </>
-                    ) : (
-                      <>
-                        <Sparkles className="h-3 w-3" />
-                        Plan this scholarship
-                      </>
-                    )}
-                  </Button>
-                  <Button size="sm" variant="outline" className="gap-1 text-xs" asChild>
-                    <Link to="/essay/$id" params={{ id }}>
-                      <FileText className="h-3 w-3" />
-                      Draft essay
-                    </Link>
-                  </Button>
-                  <Button size="sm" variant="ghost" className="gap-1 text-xs" asChild>
-                    <Link to="/dashboard">
-                      Go to dashboard
-                      <ArrowRight className="h-3 w-3" />
-                    </Link>
-                  </Button>
-                </div>
-                {!profileAvailable && (
-                  <p className="text-[11px] text-muted-foreground">
-                    Save a profile to enable planning and dashboard syncing.
-                  </p>
-                )}
-
-                <div className="space-y-2 rounded-md border border-border bg-muted/20 p-3">
-                  <p className="text-[11px] font-medium text-muted-foreground">
+                <div className="space-y-1.5 rounded-md border border-border bg-muted/20 p-3">
+                  <p className="text-[11px] font-semibold uppercase tracking-wide text-muted-foreground">
                     Application pipeline
                   </p>
                   <div className="space-y-1.5">
@@ -2141,16 +2069,48 @@ export function ScholarshipDetailPage() {
                   </div>
                 </div>
 
-                {planError && (
-                  <p className="text-[11px] text-destructive">{planError}</p>
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <Button
+                    size="sm"
+                    onClick={handlePlanApplication}
+                    disabled={planLoading || !profileAvailable}
+                  >
+                    {planLoading ? (
+                      <>
+                        <Sparkles className="mr-2 h-3 w-3 animate-pulse" />
+                        Creating plan...
+                      </>
+                    ) : (
+                      <>
+                        <Sparkles className="mr-2 h-3 w-3" />
+                        Create / update plan
+                      </>
+                    )}
+                  </Button>
+                  <Button size="sm" variant="outline" className="gap-1" asChild>
+                    <Link to="/dashboard">
+                      Dashboard
+                      <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  </Button>
+                  <Button size="sm" variant="ghost" className="gap-1" asChild>
+                    <Link to="/essay/$id" params={{ id }}>
+                      Draft page
+                      <ExternalLink className="h-3 w-3" />
+                    </Link>
+                  </Button>
+                </div>
+                {!profileAvailable && (
+                  <p className="text-[11px] text-muted-foreground">
+                    Save a profile to enable planning and dashboard syncing.
+                  </p>
                 )}
+                {planError && <p className="text-[11px] text-destructive">{planError}</p>}
 
                 {tasksToShow.length > 0 ? (
                   <div className="space-y-2 rounded-md bg-muted/40 p-3">
                     <div className="flex items-center justify-between">
-                      <p className="text-[11px] font-medium text-muted-foreground">
-                        Suggested tasks
-                      </p>
+                      <p className="text-[11px] font-medium text-muted-foreground">Suggested tasks</p>
                       {tasksAreLocal && (
                         <Button
                           type="button"
@@ -2182,9 +2142,7 @@ export function ScholarshipDetailPage() {
                             </span>
                           </div>
                           {task.due_date && (
-                            <span className="shrink-0 text-[10px] text-muted-foreground">
-                              Due {task.due_date}
-                            </span>
+                            <span className="shrink-0 text-[10px] text-muted-foreground">Due {task.due_date}</span>
                           )}
                         </li>
                       ))}
@@ -2196,13 +2154,90 @@ export function ScholarshipDetailPage() {
                   </p>
                 )}
               </CardContent>
-            </Card>
+                  </Card>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
 
+      <Dialog open={sourcesOpen} onOpenChange={setSourcesOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Sources used</DialogTitle>
+            <DialogDescription className="text-xs">
+              Data that informs this scholarship view and AI pipeline.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 text-sm text-muted-foreground">
+            <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2">
+              <span>Official website</span>
+              <Badge variant="outline" className="text-[11px] font-medium">
+                Used for details
+              </Badge>
+            </div>
+            <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2">
+              <span>Curated description</span>
+              <Badge variant="outline" className="text-[11px] font-medium">
+                Used for personality/themes
+              </Badge>
+            </div>
+            {scholarship?.winnerPatterns && (
+              <div className="flex items-center justify-between rounded-md border border-border bg-muted/40 px-3 py-2">
+                <span>Winner stories</span>
+                <Badge variant="outline" className="text-[11px] font-medium">
+                  Patterns only
+                </Badge>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
-         </div>
-       </div>
-     </div>
-   </div>
-  )
+      <Dialog open={explainFitOpen} onOpenChange={setExplainFitOpen}>
+        <DialogContent className="max-w-2xl">
+          <DialogHeader>
+            <DialogTitle>Why This Scholarship Fits You</DialogTitle>
+            <DialogDescription>AI-powered analysis of your profile match with this scholarship</DialogDescription>
+          </DialogHeader>
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <span>Strengths, gaps, and eligibility pulled from the explanation graph.</span>
+            {explainFitRaw && (
+              <button
+                type="button"
+                className="font-semibold text-primary hover:underline"
+                onClick={() => setShowExplainFitJson((v) => !v)}
+              >
+                For judges: {showExplainFitJson ? 'Hide JSON' : 'See JSON'}
+              </button>
+            )}
+          </div>
+          <div
+            className={
+              showExplainFitJson && explainFitRaw ? 'grid gap-4 md:grid-cols-[3fr_2fr]' : 'space-y-4'
+            }
+          >
+            <div className="space-y-4">
+              {explainFitResult ? (
+                <div className="rounded-lg bg-muted/50 p-4 text-sm leading-relaxed whitespace-pre-wrap">
+                  {explainFitResult}
+                </div>
+              ) : (
+                <p className="text-sm text-muted-foreground">No explanation available.</p>
+              )}
+            </div>
+            {showExplainFitJson && explainFitRaw && (
+              <div className="rounded-lg border border-border bg-background p-3">
+                <p className="mb-2 text-[11px] font-semibold text-muted-foreground">Structured output</p>
+                <pre className="max-h-[360px] overflow-auto rounded-md bg-muted p-3 text-[11px] leading-relaxed">
+                  {JSON.stringify(explainFitRaw, null, 2)}
+                </pre>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
+    </div>
+  </div>
+)
 }
-

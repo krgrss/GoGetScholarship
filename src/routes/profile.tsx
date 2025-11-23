@@ -25,7 +25,6 @@ function ProfilePage() {
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [results, setResults] = React.useState<any[]>([])
-  const [studentSummary, setStudentSummary] = React.useState<string | null>(null)
   const [studentId, setStudentId] = React.useState<string | null>(null)
   const [ranking, setRanking] = React.useState<any[] | null>(null)
   const [rerankError, setRerankError] = React.useState<string | null>(null)
@@ -71,7 +70,6 @@ function ProfilePage() {
       stories && `Stories: ${stories.trim()}`,
     ].filter(Boolean)
     const student_summary = parts.join('\\n').trim() || 'Student profile summary'
-    setStudentSummary(student_summary)
 
     try {
       const profileRes = await fetch('/api/profile', {
