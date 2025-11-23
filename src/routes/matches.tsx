@@ -109,7 +109,6 @@ type Mode = 'swipe' | 'list' | 'browse'
 
 function MatchesPage() {
   const [matches, setMatches] = React.useState<MatchCard[]>([])
-  const [profile, setProfile] = React.useState<any>(null)
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
   const [browseAll, setBrowseAll] = React.useState(false)
@@ -118,7 +117,7 @@ function MatchesPage() {
   const [selectedLevels, setSelectedLevels] = React.useState<string[]>([])
   const [fieldQuery, setFieldQuery] = React.useState('')
   const [hideIneligible, setHideIneligible] = React.useState(true)
-  const [viewMode, setViewMode] = React.useState<Mode>('browse')
+  const [viewMode, setViewMode] = React.useState<Mode>('swipe')
   const [savedMatches, setSavedMatches] = React.useState<Set<string>>(new Set())
   const [hiddenMatches, setHiddenMatches] = React.useState<Set<string>>(new Set())
 
@@ -143,7 +142,8 @@ function MatchesPage() {
         const stored =
           localStorage.getItem('scholarship_profile') || localStorage.getItem('profile')
         const parsedProfile = stored ? JSON.parse(stored) : null
-        setProfile(parsedProfile || null)
+        const studentId =
+          localStorage.getItem('scholarship_student_id') || localStorage.getItem('student_id')
 
         let endpoint = '/api/match'
         let body: any = {}
@@ -153,6 +153,7 @@ function MatchesPage() {
           body = {
             student_summary: 'Browse all scholarships for this demo profile.',
             k: 60,
+            ...(studentId ? { student_id: studentId } : {}),
           }
         } else {
           const studentSummary = parsedProfile?.summary
@@ -165,6 +166,7 @@ function MatchesPage() {
           body = {
             student_summary: studentSummary,
             k: 30,
+            ...(studentId ? { student_id: studentId } : {}),
             ...(minGpa !== undefined ? { min_gpa: minGpa } : {}),
             ...(eligibility ? { eligibility } : {}),
           }
@@ -383,7 +385,6 @@ function MatchesPage() {
                 matches={visibleMatches}
                 loading={loading}
                 onSave={toggleSave}
-                onSkip={hideMatch}
                 savedIds={savedMatches}
               />
             )}
@@ -574,18 +575,16 @@ function ListView({
 function BrowseView({
   matches,
   loading,
-  onSkip,
   onSave,
   savedIds,
 }: {
   matches: MatchCard[]
   loading?: boolean
-  onSkip: (id: string) => void
   onSave: (id: string) => void
   savedIds: Set<string>
 }) {
   return (
-    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+    <div className="space-y-4">
       {loading
         ? Array.from({ length: 6 }).map((_, idx) => (
             <Card key={idx} className="h-full">
@@ -604,11 +603,10 @@ function BrowseView({
             </Card>
           ))
         : matches.map((match) => (
-            <MatchCardCompact
+            <MatchCardFull
               key={match.id}
               match={match}
               onSave={() => onSave(match.id)}
-              onSkip={() => onSkip(match.id)}
               saved={savedIds.has(match.id)}
             />
           ))}
@@ -726,39 +724,113 @@ function FiltersContent({
   )
 }
 
-function MatchCardCompact({
+function MatchCardFull({
   match,
   onSave,
-  onSkip,
   saved,
 }: {
   match: MatchCard
   onSave: () => void
-  onSkip: () => void
   saved: boolean
 }) {
+  const href = `/scholarship/${match.id}`
+  const tagBadges = React.useMemo(() => {
+    const annotated = [
+      ...(match.countryTags || []).map((t) => ({ label: t, kind: 'country' as const })),
+      ...(match.levelTags || []).map((t) => ({ label: t, kind: 'level' as const })),
+      ...(match.fieldTags || []).map((t) => ({ label: t, kind: 'field' as const })),
+      ...(match.demographicTags || []).map((t) => ({ label: t, kind: 'demo' as const })),
+    ].filter((t) => t.label)
+    const unique = []
+    const seen = new Set<string>()
+    for (const item of annotated) {
+      if (seen.has(item.label)) continue
+      seen.add(item.label)
+      unique.push(item)
+    }
+    const max = 6
+    return {
+      display: unique.slice(0, max),
+      overflow: unique.length > max ? unique.length - max : 0,
+    }
+  }, [match.countryTags, match.levelTags, match.fieldTags, match.demographicTags])
   return (
-    <Card className="h-full">
+    <Card
+      className="h-full cursor-pointer transition hover:shadow-lg"
+      onClick={() => (window.location.href = href)}
+    >
       <CardHeader className="pb-2">
-        <CardTitle className="text-sm">{match.name}</CardTitle>
-        <CardDescription className="text-xs">{match.provider}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-2 text-sm text-muted-foreground">
-        <div className="flex flex-wrap gap-2 text-[11px]">
-          <Badge variant="outline">{match.amount}</Badge>
-          <Badge variant="outline">{match.deadline}</Badge>
-          <Badge variant="secondary">{match.workload}</Badge>
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <CardTitle className="text-lg">{match.name}</CardTitle>
+            <CardDescription className="text-sm">{match.provider}</CardDescription>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge
+              variant="outline"
+              className="text-[11px] rounded-full border-muted-foreground/40 text-foreground"
+            >
+              Match score: {match.matchScore}
+            </Badge>
+            <Button
+              size="icon"
+              variant={saved ? 'secondary' : 'outline'}
+              className="h-8 w-8"
+              onClick={(e) => {
+                e.stopPropagation()
+                onSave()
+              }}
+            >
+              <Heart className={`h-4 w-4 ${saved ? 'fill-primary text-primary' : ''}`} />
+            </Button>
+          </div>
         </div>
-        <p className="text-xs">
-          Match: {match.matchScore}% {match.whyMatch ? `- ${match.whyMatch}` : ''}
-        </p>
+      </CardHeader>
+      <CardContent className="space-y-3 text-sm text-muted-foreground">
+        <div className="flex items-center justify-between text-base font-semibold text-foreground">
+          <span className="text-primary">{match.amount}</span>
+          <span className="text-sm text-muted-foreground">Deadline: {match.deadline}</span>
+        </div>
+        <div className="flex flex-wrap gap-2 text-[12px]">
+          {tagBadges.display.map((t) => {
+            const isCountry = t.kind === 'country'
+            const isNeutral = t.label.toLowerCase() === 'any'
+            return (
+              <Badge
+                key={t.label}
+                variant={isCountry ? 'outline' : 'secondary'}
+                className={
+                  isCountry
+                    ? 'border-primary/40 text-primary'
+                    : isNeutral
+                      ? 'bg-muted text-foreground'
+                      : 'bg-amber-500 text-foreground hover:bg-amber-600'
+                }
+              >
+                {t.label}
+              </Badge>
+            )
+          })}
+          {tagBadges.overflow > 0 && (
+            <Badge variant="secondary" className="bg-muted text-foreground">
+              +{tagBadges.overflow} more
+            </Badge>
+          )}
+        </div>
       </CardContent>
-      <CardFooter className="flex items-center gap-2">
-        <Button size="sm" variant="outline" onClick={onSkip} className="flex-1">
-          Skip
-        </Button>
-        <Button size="sm" onClick={onSave} className="flex-1" variant={saved ? 'secondary' : 'default'}>
-          {saved ? 'Saved' : 'Save'}
+      <CardFooter className="flex items-center justify-between gap-2 border-t bg-muted/30">
+        <span className="flex items-center gap-2 text-sm text-muted-foreground">
+          <span className="h-2 w-2 rounded-full bg-green-500" />
+          {match.workloadLabel} Workload: {match.workload || 'Short form'}
+        </span>
+        <Button
+          size="sm"
+          onClick={(e) => {
+            e.stopPropagation()
+            window.location.href = href
+          }}
+        >
+          View Details <ArrowRight className="ml-1 h-4 w-4" />
         </Button>
       </CardFooter>
     </Card>
@@ -772,9 +844,9 @@ function matchTier(score: number) {
   return 'Unknown'
 }
 
-function toMatchCard(row: ApiMatchRow, fallbackIndex: number): MatchCard {
+function toMatchCard(row: ApiMatchRow, fallbackIndex: number, profile: any): MatchCard {
   const workloadMeta = computeWorkload(row)
-  const eligibilityStatus = evaluateEligibility(row, null)
+  const eligibilityStatus = evaluateEligibility(row, profile)
   const baseScore = computeMatchScore(row, fallbackIndex)
   const adjustedScore = adjustScoreForEligibility(baseScore, eligibilityStatus)
   return {
@@ -811,6 +883,10 @@ function buildEligibility(profile: any) {
   if (profile?.country) eligibility.country = profile.country
   if (profile?.citizenship) eligibility.citizenship = profile.citizenship
   if (profile?.backgroundTags) eligibility.demographic = profile.backgroundTags
+  if (profile?.identityTags) eligibility.demographic = [
+    ...(eligibility.demographic || []),
+    ...profile.identityTags,
+  ]
   return { minGpa, eligibility }
 }
 
@@ -892,9 +968,12 @@ function evaluateEligibility(row: ApiMatchRow, profile?: any) {
   const profileCountry = normalizeCountry(profile.country)
   const profileCitizenship = normalizeValue(profile.citizenship)
   const profileGpa = profile.gpa ? Number(profile.gpa) : undefined
-  const profileTags: string[] = Array.isArray(profile.backgroundTags)
-    ? profile.backgroundTags.map(normalizeValue).filter(Boolean)
-    : []
+  const genderTag = profile.gender ? normalizeValue(profile.gender) : ''
+  const profileTags: string[] = [
+    ...(Array.isArray(profile.backgroundTags) ? profile.backgroundTags : []),
+    ...(Array.isArray(profile.identityTags) ? profile.identityTags : []),
+    genderTag,
+  ].map(normalizeValue).filter(Boolean)
 
   const countryEligibility = extractArray(row.metadata?.country_eligibility).map(normalizeCountry)
   const scholarshipCountry = normalizeCountry(row.country || (row.metadata as any)?.source_country)
@@ -923,11 +1002,16 @@ function evaluateEligibility(row: ApiMatchRow, profile?: any) {
   const demographicReq = extractArray((row.metadata as any)?.demographic_eligibility)
     .map(normalizeValue)
     .filter((t) => t && t !== 'none_specified')
-  if (demographicReq.length && profileTags.length) {
-    const overlap = demographicReq.some((t) => profileTags.includes(t))
-    if (!overlap) {
+  if (demographicReq.length) {
+    if (!profileTags.length) {
       ineligible = true
-      reasons.push('Demographic requirement not met')
+      reasons.push('Demographic requirement not met (no demographic info)')
+    } else {
+      const overlap = demographicReq.some((t) => profileTags.includes(t))
+      if (!overlap) {
+        ineligible = true
+        reasons.push('Demographic requirement not met')
+      }
     }
   }
 
@@ -943,14 +1027,14 @@ function adjustScoreForEligibility(score: number, eligibility: { status: string 
 }
 
 function computeMatchScore(row: ApiMatchRow, fallbackIndex: number) {
-  if (typeof row.distance === 'number') {
-    const d = Math.min(Math.max(row.distance, 0), 2)
-    const score = Math.round((1 - d / 2) * 100)
-    return Math.max(0, Math.min(100, score))
-  }
   if (typeof row.dot_sim === 'number') {
     const sim = Math.max(-1, Math.min(1, row.dot_sim))
     const score = Math.round(((sim + 1) / 2) * 100)
+    return Math.max(0, Math.min(100, score))
+  }
+  if (typeof row.distance === 'number') {
+    const d = Math.min(Math.max(row.distance, 0), 2)
+    const score = Math.round((1 - d / 2) * 100)
     return Math.max(0, Math.min(100, score))
   }
   return Math.max(0, Math.min(100, 70 - fallbackIndex))

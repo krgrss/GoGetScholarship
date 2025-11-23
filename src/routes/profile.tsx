@@ -21,6 +21,8 @@ function ProfilePage() {
   const [country, setCountry] = React.useState('')
   const [stories, setStories] = React.useState('')
   const [minGpa, setMinGpa] = React.useState<string>('')
+  const [gender, setGender] = React.useState('')
+  const [identityTags, setIdentityTags] = React.useState<string[]>([])
 
   const [loading, setLoading] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
@@ -48,6 +50,8 @@ function ProfilePage() {
         if (profile.major || profile.program) setMajor(profile.major || profile.program)
         if (profile.country) setCountry(profile.country)
         if (profile.stories || profile.aboutText) setStories(profile.stories || profile.aboutText)
+        if (profile.gender) setGender(profile.gender)
+        if (Array.isArray(profile.identityTags)) setIdentityTags(profile.identityTags)
       } catch (e) {
         console.error('Failed to parse saved profile:', e)
       }
@@ -68,6 +72,8 @@ function ProfilePage() {
       major && `Major: ${major.trim()}`,
       country && `Country: ${country.trim()}`,
       stories && `Stories: ${stories.trim()}`,
+      gender && `Gender: ${gender.trim()}`,
+      identityTags.length ? `Tags: ${identityTags.join(', ')}` : '',
     ].filter(Boolean)
     const student_summary = parts.join('\\n').trim() || 'Student profile summary'
 
@@ -81,9 +87,11 @@ function ProfilePage() {
           gpa: gpa ? Number(gpa) : undefined,
           major: major || undefined,
           country: country || undefined,
+          gender: gender || undefined,
           summary: student_summary,
           metadata: {
             stories: stories || undefined,
+            identityTags: identityTags.length ? identityTags : undefined,
           },
         }),
       })
@@ -103,6 +111,8 @@ function ProfilePage() {
         major: major || undefined,
         country: country || undefined,
         stories: stories || undefined,
+        gender: gender || undefined,
+        identityTags: identityTags.length ? identityTags : undefined,
         summary: student_summary,
         updatedAt: new Date().toISOString(),
       }
@@ -121,7 +131,7 @@ function ProfilePage() {
       if (!res.ok || !data.ok) {
         throw new Error(data?.error || `Request failed (${res.status})`)
       }
-      const rows = data.rows || []
+      const rows = (data.rows || []).filter((r: any) => demographicEligible(r, { gender, identityTags }))
       setResults(rows)
 
       if (rows.length > 0) {
@@ -138,6 +148,10 @@ function ProfilePage() {
                 min_gpa: typeof r.min_gpa === 'number' ? r.min_gpa : undefined,
                 country: r.country ?? undefined,
                 fields: Array.isArray(r.fields) ? r.fields : [],
+                demographic:
+                  Array.isArray(r.metadata?.demographic_eligibility) && r.metadata.demographic_eligibility.length
+                    ? r.metadata.demographic_eligibility
+                    : [],
               })),
               top_k: 20,
             }),
@@ -260,6 +274,17 @@ function ProfilePage() {
               </div>
               <div>
                 <label className="mb-1 block text-xs font-medium text-muted-foreground">
+                  Gender (optional)
+                </label>
+                <input
+                  value={gender}
+                  onChange={(e) => setGender(e.target.value)}
+                  className="w-full rounded-full border border-border bg-background px-3 py-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  placeholder="Female / Male / Non-binary / Prefer not to say"
+                />
+              </div>
+              <div>
+                <label className="mb-1 block text-xs font-medium text-muted-foreground">
                   Filter: min scholarship GPA
                 </label>
                 <input
@@ -285,6 +310,39 @@ function ProfilePage() {
               <p className="mt-1 text-[11px] text-muted-foreground">
                 This acts like a mini-activities list for the AI. You can paste from your
                 resume or Common App.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-xs font-medium text-muted-foreground">
+                Identity tags (optional; improves demographic matching)
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {['female', 'male', 'non_binary', 'lgbtq', 'indigenous', 'black', 'latino', 'first_gen', 'low_income', 'disability'].map((tag) => {
+                  const active = identityTags.includes(tag)
+                  return (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() =>
+                        setIdentityTags((prev) =>
+                          prev.includes(tag) ? prev.filter((t) => t !== tag) : [...prev, tag],
+                        )
+                      }
+                      className={`rounded-full border px-3 py-1 text-xs transition ${
+                        active
+                          ? 'border-primary bg-primary text-primary-foreground'
+                          : 'border-border bg-background hover:border-primary'
+                      }`}
+                    >
+                      {tag.replace(/_/g, ' ')}
+                    </button>
+                  )
+                })}
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                These tags are saved to your profile and used to check demographic eligibility (e.g.,
+                women-only, Indigenous, disability).
               </p>
             </div>
 
@@ -412,6 +470,22 @@ function ProfilePage() {
       </main>
     </div>
   )
+}
+
+function demographicEligible(row: any, profile: { gender?: string; identityTags?: string[] }) {
+  const normalize = (v?: string | null) => (v ? v.trim().toLowerCase() : '')
+  const req: string[] = Array.isArray(row?.metadata?.demographic_eligibility)
+    ? row.metadata.demographic_eligibility.map(normalize).filter(Boolean)
+    : []
+  if (!req.length) return true
+  const tags: string[] = [
+    ...(Array.isArray(profile.identityTags) ? profile.identityTags : []),
+    profile.gender ? profile.gender : '',
+  ]
+    .map(normalize)
+    .filter(Boolean)
+  if (!tags.length) return false
+  return req.some((r) => tags.includes(r))
 }
 
 /**

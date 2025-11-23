@@ -66,6 +66,7 @@ function EssayWorkspacePage() {
   ])
   const [chatInput, setChatInput] = React.useState('')
   const [coachLoading, setCoachLoading] = React.useState(false)
+  const [profileCtx, setProfileCtx] = React.useState<{ summary?: string; gender?: string; identityTags?: string[] }>({})
   const wordCount = React.useMemo(
     () => essayContent.split(/\s+/).filter((w) => w.length > 0).length,
     [essayContent],
@@ -96,6 +97,23 @@ function EssayWorkspacePage() {
       .replace(/<[^>]+>/g, ' ')
       .replace(/\s+/g, ' ')
       .trim()
+  }, [])
+
+  React.useEffect(() => {
+    if (typeof window === 'undefined') return
+    try {
+      const storedProfile = localStorage.getItem('scholarship_profile')
+      if (storedProfile) {
+        const parsed = JSON.parse(storedProfile)
+        setProfileCtx({
+          summary: parsed.summary,
+          gender: parsed.gender,
+          identityTags: parsed.identityTags,
+        })
+      }
+    } catch (e) {
+      console.error('Failed to load profile context for essay workspace', e)
+    }
   }, [])
 
   React.useEffect(() => {
@@ -238,7 +256,9 @@ function EssayWorkspacePage() {
     setIsAnalyzing(true)
     try {
       const adminKey =
-        (typeof window !== 'undefined' && localStorage.getItem('admin_key')) || ''
+        (typeof window !== 'undefined' && localStorage.getItem('admin_key')) ||
+        (typeof import.meta !== 'undefined' ? (import.meta as any).env?.VITE_ADMIN_API_KEY : '') ||
+        ''
       const res = await fetch('/api/grade-essay', {
         method: 'POST',
         headers: {
@@ -275,7 +295,9 @@ function EssayWorkspacePage() {
       return
     }
     const adminKey =
-      (typeof window !== 'undefined' && localStorage.getItem('admin_key')) || ''
+      (typeof window !== 'undefined' && localStorage.getItem('admin_key')) ||
+      (typeof import.meta !== 'undefined' ? (import.meta as any).env?.VITE_ADMIN_API_KEY : '') ||
+      ''
     try {
       const res = await fetch('/api/essay/transform', {
         method: 'POST',
@@ -287,6 +309,7 @@ function EssayWorkspacePage() {
           essayId: id,
           mode,
           contentPlain: essayContent,
+          studentProfile: profileCtx,
         }),
       })
       const json = await res.json()
@@ -325,6 +348,7 @@ function EssayWorkspacePage() {
           scholarshipId: id,
           prompt,
           existingContent: essayContent,
+          studentProfile: profileCtx,
         }),
       })
       const json = await res.json()
@@ -371,6 +395,7 @@ function EssayWorkspacePage() {
         content: essayContent,
         rubric: rubricItems,
         message: text,
+        studentProfile: profileCtx,
       }),
     })
       .then(async (res) => {
@@ -591,14 +616,15 @@ function EssayWorkspacePage() {
                   Bullets
                 </Button>
               </div>
-              <div className="px-6 py-4">
-                <div
-                  ref={editorRef}
-                  contentEditable
-                  onInput={handleEditorInput}
-                  className="min-h-[480px] w-full rounded-md border bg-white px-4 py-3 text-base leading-relaxed shadow-inner focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 lg:text-lg"
-                  dangerouslySetInnerHTML={{ __html: editorHtml || '<p><br/></p>' }}
-                />
+                <div className="px-6 py-4">
+                  <div
+                    ref={editorRef}
+                    contentEditable
+                    dir="ltr"
+                    onInput={handleEditorInput}
+                    className="min-h-[480px] w-full rounded-md border bg-white px-4 py-3 text-base leading-relaxed shadow-inner focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40 lg:text-lg text-left"
+                    dangerouslySetInnerHTML={{ __html: editorHtml || '<p><br/></p>' }}
+                  />
               </div>
               <div className="flex flex-wrap items-center justify-between gap-2 border-t bg-muted/30 px-4 py-2 text-xs text-muted-foreground">
                 <div className="flex items-center gap-2">
@@ -806,7 +832,8 @@ function EssayWorkspacePage() {
                     value={chatInput}
                     onChange={(e) => setChatInput(e.target.value)}
                     placeholder="Ask how to improve this essay..."
-                    className="min-h-[60px]"
+                    className="min-h-[60px] text-left"
+                    dir="ltr"
                   />
                   <Button onClick={() => handleSendChat()} disabled={coachLoading}>
                     {coachLoading ? 'Thinking...' : 'Send'}
